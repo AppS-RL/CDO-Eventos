@@ -101,10 +101,47 @@ function mostrarAsistentes() {
 }
 
 function mostrarFormularioAsistente(asistente = null) {
-
     const app = document.getElementById("app");
 
     const esEdicion = Boolean(asistente);
+
+    const eventoActual =
+        eventosDisponibles.find(evento =>
+            evento.codigo ===
+            (asistente?.evento ||
+            codigoEventoSeleccionado)
+        ) || {
+            codigo: "SEP26",
+            nombre: "Sin Cadenas 2026",
+            costo: 400,
+            tipo: "evento"
+        };
+
+    const esAhorro =
+        eventoActual.tipo === "ahorro";
+
+    const etiquetaMonto = esAhorro
+        ? "Ahorro inicial"
+        : "Abono inicial";
+
+    const textoMonto = esAhorro
+        ? "Monto opcional para iniciar el ahorro"
+        : "Costo $" + Number(
+            eventoActual.costo
+        ).toLocaleString("es-MX");
+
+    if (
+        esEdicion &&
+        eventoActual.codigo !== "SEP26"
+    ) {
+        alert(
+            "La edición de este evento se agregará " +
+            "en el siguiente paso."
+        );
+
+        mostrarListaAsistentes();
+        return;
+    }
 
     app.innerHTML = `
 
@@ -112,7 +149,9 @@ function mostrarFormularioAsistente(asistente = null) {
 
             <header class="app-header solo-logo">
 
-                <p>Sin Cadenas 2026</p>
+                <p>
+                    ${eventoActual.nombre}
+                </p>
 
             </header>
 
@@ -122,15 +161,25 @@ function mostrarFormularioAsistente(asistente = null) {
 
                     <div class="form-header">
 
-                        <h2>➕ Nuevo asistente</h2>
+                        <h2>
+                            ${
+                                esEdicion
+                                    ? "✏️ Editar asistente"
+                                    : esAhorro
+                                        ? "➕ Nuevo servidor"
+                                        : "➕ Nuevo asistente"
+                            }
+                        </h2>
 
                         <p>
-                            Ingresa los datos para generar
-                            su registro y código QR.
+                            ${
+                                esEdicion
+                                    ? "Actualiza sus datos y corrige el total pagado si es necesario."
+                                    : "Ingresa los datos para generar su registro y código QR."
+                            }
                         </p>
 
                     </div>
-
 
                     <form
                         id="formAsistente"
@@ -153,7 +202,6 @@ function mostrarFormularioAsistente(asistente = null) {
 
                         </div>
 
-
                         <div class="campo">
 
                             <label for="telefono">
@@ -169,7 +217,6 @@ function mostrarFormularioAsistente(asistente = null) {
                             >
 
                         </div>
-
 
                         <div class="campo">
 
@@ -188,7 +235,6 @@ function mostrarFormularioAsistente(asistente = null) {
 
                         </div>
 
-
                         <div class="campo">
 
                             <label for="observaciones">
@@ -205,30 +251,37 @@ function mostrarFormularioAsistente(asistente = null) {
 
                         <div class="campo">
 
-                         <label for="abonoInicial">
-                            Abono inicial
-                             </label>
+                            <label for="abonoInicial">
+                                ${etiquetaMonto}
+                            </label>
 
-                             <input
-                               id="abonoInicial"
-                              type="number"
-                               min="0"
-                               max="400"
-                              step="0.01"
-                              inputmode="decimal"
-                              placeholder="Costo $400"
-    >
+                            <input
+                                id="abonoInicial"
+                                type="number"
+                                min="0"
+                                ${
+                                    esAhorro
+                                        ? ""
+                                        : `max="${eventoActual.costo}"`
+                                }
+                                step="0.01"
+                                inputmode="decimal"
+                                placeholder="${textoMonto}"
+                            >
 
-</div>
+                        </div>
 
                         <button
                             id="btnGuardar"
                             type="submit"
                             class="boton principal"
                         >
-                            Guardar y generar QR
+                            ${
+                                esEdicion
+                                    ? "Guardar cambios"
+                                    : "Guardar y generar QR"
+                            }
                         </button>
-
 
                         <button
                             id="btnCancelar"
@@ -248,18 +301,7 @@ function mostrarFormularioAsistente(asistente = null) {
 
     `;
 
-
     if (esEdicion) {
-
-        document
-            .querySelector(".form-header h2")
-            .textContent = "✏️ Editar asistente";
-
-        document
-            .querySelector(".form-header p")
-            .textContent =
-                "Actualiza sus datos y corrige el total pagado si es necesario.";
-
         document.getElementById("nombre").value =
             asistente.nombre || "";
 
@@ -278,13 +320,7 @@ function mostrarFormularioAsistente(asistente = null) {
 
         document.getElementById("abonoInicial").value =
             Number(asistente.pagado || 0).toFixed(2);
-
-        document
-            .getElementById("btnGuardar")
-            .textContent = "Guardar cambios";
-
     }
-
 
     document
         .getElementById("btnCancelar")
@@ -292,7 +328,6 @@ function mostrarFormularioAsistente(asistente = null) {
             "click",
             mostrarAsistentes
         );
-
 
     document
         .getElementById("formAsistente")
@@ -305,7 +340,6 @@ function mostrarFormularioAsistente(asistente = null) {
                 )
                 : guardarNuevoAsistente
         );
-
 }
 
 
@@ -349,7 +383,10 @@ const datos = {
         boton.textContent = "Guardando...";
 
         const resultado =
-            await registrarAsistenteAPI(datos);
+            await registrarAsistenteAPI(
+    datos,
+    codigoEventoSeleccionado
+);
 
 
         if (!resultado.ok) {
@@ -385,6 +422,15 @@ const datos = {
 
 function mostrarRegistroExitoso(asistente) {
 
+        const evento =
+        obtenerEventoDeRegistro(asistente) || {
+            nombre: "Sin Cadenas 2026",
+            tipo: "evento"
+        };
+
+    const esAhorro =
+        evento.tipo === "ahorro";
+
     const app = document.getElementById("app");
 
     app.innerHTML = `
@@ -393,7 +439,7 @@ function mostrarRegistroExitoso(asistente) {
 
             <header class="app-header solo-logo">
 
-                <p>Sin Cadenas 2026</p>
+                <p>${evento.nombre}</p>
 
             </header>
 
@@ -419,7 +465,7 @@ function mostrarRegistroExitoso(asistente) {
 
 
                     <p class="id-label">
-                        ID DEL ASISTENTE
+                        ${esAhorro ? "ID DEL SERVIDOR" : "ID DEL ASISTENTE"}
                     </p>
 
 
@@ -462,12 +508,18 @@ function mostrarRegistroExitoso(asistente) {
                             📲 Enviar QR
                         </button>
 
-                        <button
-                            id="btnEnviarHistorial"
-                            class="boton"
-                        >
-                            🧾 Enviar historial
-                        </button>
+                        ${
+    esAhorro
+        ? ""
+        : `
+            <button
+                id="btnEnviarHistorial"
+                class="boton"
+            >
+                🧾 Enviar historial
+            </button>
+          `
+}
 
                         <button
                             id="btnRegistrarOtro"
@@ -547,7 +599,9 @@ function mostrarRegistroExitoso(asistente) {
             "Hola " +
             asistente.nombre +
             " 👋\n\n" +
-            "Este es tu registro para Sin Cadenas 2026.\n\n" +
+            "Este es tu registro para " +
+            evento.nombre +
+            ".\n\n" +
             "🆔 ID: " +
             asistente.id +
             "\n\n" +
@@ -569,13 +623,13 @@ function mostrarRegistroExitoso(asistente) {
 
     });
 
+    if (!esAhorro) {
     document
-    .getElementById("btnEnviarHistorial")
-    .addEventListener("click", () => {
-
-        enviarHistorialPorWhatsApp(asistente);
-
-    });
+        .getElementById("btnEnviarHistorial")
+        .addEventListener("click", () => {
+            enviarHistorialPorWhatsApp(asistente);
+        });
+}
 
 
 }
@@ -637,84 +691,103 @@ async function guardarEdicionAsistente(evento, id) {
 }
 
 async function enviarHistorialPorWhatsApp(asistente) {
-
-    const telefono =
-        String(asistente.telefono || "")
-        .replace(/\D/g, "");
+    const telefono = String(
+        asistente.telefono || ""
+    ).replace(/\D/g, "");
 
     if (!telefono) {
-
-        alert("Este asistente no tiene un teléfono registrado.");
-
+        alert(
+            "Este asistente no tiene un teléfono registrado."
+        );
         return;
     }
 
-    try {
+    const evento =
+        obtenerEventoDeRegistro(asistente) || {
+            codigo: "SEP26",
+            nombre: "Sin Cadenas 2026",
+            costo: 400
+        };
 
+    try {
         const resultado =
-            await obtenerHistorialPagosAPI(asistente.id);
+            await obtenerHistorialPagosAPI(
+                asistente.id,
+                evento.codigo
+            );
 
         if (!resultado.ok) {
-
             throw new Error(
                 resultado.mensaje ||
                 "No fue posible obtener el historial."
             );
-
         }
 
         const pagos = resultado.pagos || [];
-        const costoEvento = 400;
-        const totalPagado = Number(asistente.pagado || 0);
-        const saldo = Math.max(0, costoEvento - totalPagado);
+
+        const costoEvento =
+            Number(asistente.costo || evento.costo || 0);
+
+        const totalPagado =
+            Number(asistente.pagado || 0);
+
+        const saldo = Math.max(
+            0,
+            costoEvento - totalPagado
+        );
 
         let mensaje =
             "Hola " + asistente.nombre + " 👋\n\n" +
-            "Este es tu historial de pagos de Sin Cadenas 2026.\n\n" +
+            "Este es tu historial de pagos de " +
+            evento.nombre + ".\n\n" +
             "🆔 ID: " + asistente.id + "\n\n" +
-            "💰 Costo del evento: $" + costoEvento.toFixed(2) +
+            "💰 Costo del evento: $" +
+            costoEvento.toFixed(2) +
             "\n\n📋 Pagos realizados:\n\n";
 
         if (pagos.length === 0) {
-
-            mensaje += "📋 No hay abonos registrados actualmente.\n\n";
+            mensaje +=
+                "📋 No hay abonos registrados actualmente.\n\n";
 
         } else {
-
             pagos.forEach(pago => {
-
                 mensaje +=
-                    "• " + formatearFechaPago(pago.fecha) +
+                    "• " +
+                    formatearFechaPago(pago.fecha) +
                     " — Abono: $" +
-                    Number(pago.abono || 0).toFixed(2) + "\n";
-
+                    Number(pago.abono || 0)
+                        .toFixed(2) +
+                    "\n";
             });
 
             mensaje += "\n";
         }
 
         mensaje +=
-            "✅ Total pagado: $" + totalPagado.toFixed(2) + "\n" +
-            "💳 Saldo pendiente: $" + saldo.toFixed(2) + "\n\n" +
-            "Gracias por tu participación en Sin Cadenas 2026.";
+            "✅ Total pagado: $" +
+            totalPagado.toFixed(2) +
+            "\n" +
+            "💳 Saldo pendiente: $" +
+            saldo.toFixed(2) +
+            "\n\nGracias por tu participación en " +
+            evento.nombre + ".";
 
         window.open(
-            "https://wa.me/" + telefono +
-            "?text=" + encodeURIComponent(mensaje),
+            "https://wa.me/" +
+            telefono +
+            "?text=" +
+            encodeURIComponent(mensaje),
             "_blank"
         );
 
     } catch (error) {
-
         console.error(error);
 
         alert(
             "No fue posible enviar el historial.\n\n" +
             error.message
         );
-
     }
-
 }
 
 function escaparHTML(valor) {
@@ -730,8 +803,13 @@ function escaparHTML(valor) {
 
 async function compartirQR(asistente) {
 
+        const evento =
+        obtenerEventoDeRegistro(asistente) || {
+            nombre: "Sin Cadenas 2026"
+        };
+
     const texto =
-        `Sin Cadenas 2026\n` +
+    `${evento.nombre}\n` +
         `${asistente.nombre}\n` +
         `ID: ${asistente.id}`;
 
@@ -773,7 +851,7 @@ async function compartirQR(asistente) {
             try {
 
                 await navigator.share({
-                    title: "Sin Cadenas 2026",
+                    title: evento.nombre,
                     text: texto,
                     files: [archivoQR]
                 });
@@ -1047,8 +1125,21 @@ async function ejecutarBusquedaAsistente(evento) {
 
 function mostrarResultadoAsistente(asistente) {
 
-    const resultado =
-        document.getElementById("resultadoBusqueda");
+        const resultado =
+        document.getElementById(
+            "resultadoBusqueda"
+        );
+        
+        const evento =
+        obtenerEventoDeRegistro(asistente) || {
+            codigo: "SEP26",
+            nombre: "Sin Cadenas 2026",
+            costo: 400,
+            tipo: "evento"
+        };
+
+    const costoEvento =
+        Number(asistente.costo || evento.costo || 0);
 
 
     resultado.innerHTML = `
@@ -1140,7 +1231,7 @@ function mostrarResultadoAsistente(asistente) {
 
                     <div>
                         <span>Costo</span>
-                        <strong>$400</strong>
+                        <strong>$${costoEvento.toFixed(2)}</strong>
                     </div>
 
                     <div>
@@ -1155,7 +1246,7 @@ function mostrarResultadoAsistente(asistente) {
                         <strong>
                             $${Math.max(
                                 0,
-                                400 - Number(asistente.pagado || 0)
+                               costoEvento - Number(asistente.pagado || 0)
                             ).toFixed(2)}
                         </strong>
                     </div>
@@ -1244,7 +1335,8 @@ function mostrarResultadoAsistente(asistente) {
                 const pagadoActual =
                     Number(asistente.pagado || 0);
 
-                const costoEvento = 400;
+                const costoEvento =
+    Number(asistente.costo || evento.costo || 0);
 
                 const saldo =
                     Math.max(
@@ -1316,10 +1408,11 @@ function mostrarResultadoAsistente(asistente) {
                 try {
 
                     const resultado =
-                        await registrarAbonoAPI(
-                            asistente.id,
-                            monto
-                        );
+                      await registrarAbonoAPI(
+    asistente.id,
+    monto,
+    evento.codigo
+);
 
 
                     if (!resultado.ok) {
@@ -1386,7 +1479,8 @@ function mostrarResultadoAsistente(asistente) {
 
                 const resultado =
                     await obtenerHistorialPagosAPI(
-                        asistente.id
+                    asistente.id,
+                    evento.codigo
                     );
 
                 if (!resultado.ok) {
@@ -1401,7 +1495,8 @@ function mostrarResultadoAsistente(asistente) {
                 const pagos =
                     resultado.pagos || [];
 
-                const costoEvento = 400;
+                const costoEvento =
+                      Number(asistente.costo || evento.costo || 0);
 
                 const totalPagado =
                     Number(
@@ -1418,7 +1513,9 @@ function mostrarResultadoAsistente(asistente) {
                     "Hola " +
                     asistente.nombre +
                     " 👋\n\n" +
-                    "Este es tu historial de pagos de Sin Cadenas 2026.\n\n" +
+                    "Este es tu historial de pagos de " +
+                    evento.nombre +
+                    ".\n\n" +
                     "🆔 ID: " +
                     asistente.id +
                     "\n\n" +
@@ -1459,7 +1556,8 @@ function mostrarResultadoAsistente(asistente) {
                     "💳 Saldo pendiente: $" +
                     saldo.toFixed(2) +
                     "\n\n" +
-                    "Gracias por tu participación en Sin Cadenas 2026.";
+                    "Gracias por tu participación en " +
+                    evento.nombre + ".";
 
                 const url =
                     "https://wa.me/" +
@@ -1613,11 +1711,18 @@ function mostrarResultadoAsistente(asistente) {
     // CARGAR HISTORIAL DE PAGOS
     // -------------------------
 
-    cargarHistorialPagos(asistente.id);
+   cargarHistorialPagos(
+    asistente.id,
+    evento.codigo
+);
 
 }
 
-async function cargarHistorialPagos(id) {
+async function cargarHistorialPagos(
+    id,
+    codigoEvento
+) {
+
 
     const contenedor =
         document.getElementById("historialPagos");
@@ -1631,7 +1736,10 @@ async function cargarHistorialPagos(id) {
     try {
 
         const resultado =
-            await obtenerHistorialPagosAPI(id);
+            await obtenerHistorialPagosAPI(
+    id,
+    codigoEvento
+);
 
 
         if (!resultado.ok) {
@@ -1829,7 +1937,6 @@ let paginaAsistentes = 1;
 const ASISTENTES_POR_PAGINA = 10;
 
 async function mostrarListaAsistentes() {
-
     const app = document.getElementById("app");
 
     app.innerHTML = `
@@ -1838,10 +1945,11 @@ async function mostrarListaAsistentes() {
 
             <header class="app-header solo-logo">
 
-                <p>Sin Cadenas 2026</p>
+                <p id="nombreEventoLista">
+                    Cargando evento...
+                </p>
 
             </header>
-
 
             <main class="app-content">
 
@@ -1867,7 +1975,6 @@ async function mostrarListaAsistentes() {
 
                     </div>
 
-
                     <div
                         class="paginacion-lista paginacion-lista-superior"
                         data-paginacion-lista
@@ -1875,7 +1982,9 @@ async function mostrarListaAsistentes() {
 
                     <div class="form-header">
 
-                        <h2>📋 Lista de asistentes</h2>
+                        <h2 id="tituloListaAsistentes">
+                            📋 Lista de asistentes
+                        </h2>
 
                         <p>
                             Consulta los registros del evento.
@@ -1883,6 +1992,20 @@ async function mostrarListaAsistentes() {
 
                     </div>
 
+                    <div class="campo selector-evento-lista">
+
+                        <label for="selectorEventoLista">
+                            Evento
+                        </label>
+
+                        <select
+                            id="selectorEventoLista"
+                            disabled
+                        >
+                            <option>Cargando eventos...</option>
+                        </select>
+
+                    </div>
 
                     <div class="campo buscador-lista">
 
@@ -1899,7 +2022,6 @@ async function mostrarListaAsistentes() {
 
                     </div>
 
-
                     <div class="lista-resumen">
 
                         <span id="totalLista">
@@ -1908,7 +2030,6 @@ async function mostrarListaAsistentes() {
 
                     </div>
 
-
                     <div id="contenedorLista">
 
                         <div class="lista-cargando">
@@ -1916,7 +2037,6 @@ async function mostrarListaAsistentes() {
                         </div>
 
                     </div>
-
 
                     <div
                         class="paginacion-lista"
@@ -1951,7 +2071,6 @@ async function mostrarListaAsistentes() {
 
     `;
 
-
     document
         .querySelectorAll("[data-lista-accion]")
         .forEach(boton => {
@@ -1969,7 +2088,6 @@ async function mostrarListaAsistentes() {
 
         });
 
-
     document
         .getElementById("buscarLista")
         .addEventListener(
@@ -1977,9 +2095,51 @@ async function mostrarListaAsistentes() {
             filtrarListaAsistentes
         );
 
+    try {
+        await prepararSelectorEvento(
+            "selectorEventoLista",
+            () => {
+                paginaAsistentes = 1;
+                actualizarEncabezadoLista();
+                cargarListaAsistentes();
+            }
+        );
+
+    } catch (error) {
+        console.error(
+            "No fue posible cargar eventos:",
+            error
+        );
+    }
+
+    actualizarEncabezadoLista();
 
     await cargarListaAsistentes();
+}
 
+
+function actualizarEncabezadoLista() {
+    const evento = obtenerEventoSeleccionado();
+
+    const nombreEvento =
+        document.getElementById("nombreEventoLista");
+
+    const titulo =
+        document.getElementById(
+            "tituloListaAsistentes"
+        );
+
+    if (nombreEvento) {
+        nombreEvento.textContent =
+            evento?.nombre || "Sin Cadenas 2026";
+    }
+
+    if (titulo) {
+        titulo.textContent =
+            evento?.tipo === "ahorro"
+                ? "👥 Lista de servidores"
+                : "📋 Lista de asistentes";
+    }
 }
 
 function renderizarListaAsistentes() {
@@ -2410,7 +2570,9 @@ async function cargarListaAsistentes() {
     try {
 
         const respuesta =
-            await listarAsistentesAPI();
+            await listarAsistentesAPI(
+    codigoEventoSeleccionado
+);
 
 
         if (!respuesta.ok) {

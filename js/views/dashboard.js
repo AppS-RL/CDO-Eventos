@@ -1,5 +1,4 @@
 function mostrarDashboard() {
-
     const app = document.getElementById("app");
 
     app.innerHTML = `
@@ -10,10 +9,11 @@ function mostrarDashboard() {
 
                 <h1>📊 Dashboard</h1>
 
-                <p>Sin Cadenas 2026</p>
+                <p id="nombreEventoDashboard">
+                    Cargando evento...
+                </p>
 
             </header>
-
 
             <main class="app-content">
 
@@ -29,20 +29,31 @@ function mostrarDashboard() {
 
                     </div>
 
+                    <div class="campo selector-evento-dashboard">
+
+                        <label for="selectorEventoDashboard">
+                            Evento
+                        </label>
+
+                        <select
+                            id="selectorEventoDashboard"
+                            disabled
+                        >
+                            <option>
+                                Cargando eventos...
+                            </option>
+                        </select>
+
+                    </div>
 
                     <div
                         id="dashboardContenido"
                         class="dashboard-contenido"
                     >
-
                         <div class="dashboard-cargando">
-
                             Cargando estadísticas...
-
                         </div>
-
                     </div>
-
 
                     <button
                         id="btnActualizarDashboard"
@@ -51,78 +62,107 @@ function mostrarDashboard() {
                         ↻ Actualizar
                     </button>
 
-
-                    
-
                 </div>
 
             </main>
-<nav class="bottom-nav">
 
-    <button
-        id="navAsistentes"
-        class="nav-item">
-        👥
-    </button>
+            <nav class="bottom-nav">
 
-    <button
-        id="navDashboard"
-        class="nav-item nav-activo">
-        📊
-    </button>
+                <button
+                    id="navAsistentes"
+                    class="nav-item"
+                >
+                    👥
+                </button>
 
-    <button
-        id="navConfiguracion"
-        class="nav-item">
-        ⚙️
-    </button>
+                <button
+                    id="navDashboard"
+                    class="nav-item nav-activo"
+                >
+                    📊
+                </button>
 
-</nav>
+                <button
+                    id="navConfiguracion"
+                    class="nav-item"
+                >
+                    ⚙️
+                </button>
+
+            </nav>
 
         </div>
 
     `;
 
+    document
+        .getElementById("navAsistentes")
+        .addEventListener("click", mostrarAsistentes);
 
-document
-    .getElementById("navAsistentes")
-    .addEventListener(
-        "click",
-        mostrarAsistentes
-    );
-
+    document
+        .getElementById("navConfiguracion")
+        .addEventListener("click", mostrarConfiguracion);
 
     document
         .getElementById("btnActualizarDashboard")
-        .addEventListener(
-            "click",
-            cargarDashboard
-        );
+        .addEventListener("click", cargarDashboard);
 
-
-    cargarDashboard();
-
-    document
-    .getElementById("navConfiguracion")
-    .addEventListener(
-        "click",
-        mostrarConfiguracion
-    );
-
+    prepararDashboard();
 }
 
-async function cargarDashboard() {
 
-    const contenedor =
-        document.getElementById(
-            "dashboardContenido"
+async function prepararDashboard() {
+    const selector = document.getElementById(
+        "selectorEventoDashboard"
+    );
+
+    try {
+        await cargarEventosDisponibles();
+
+        selector.innerHTML = "";
+
+        eventosDisponibles.forEach(evento => {
+            const opcion = document.createElement("option");
+
+            opcion.value = evento.codigo;
+            opcion.textContent = evento.nombre;
+
+            if (
+                evento.codigo ===
+                codigoEventoSeleccionado
+            ) {
+                opcion.selected = true;
+            }
+
+            selector.appendChild(opcion);
+        });
+
+        selector.disabled = false;
+
+        selector.addEventListener("change", () => {
+            cambiarEventoSeleccionado(selector.value);
+            cargarDashboard();
+        });
+
+    } catch (error) {
+        console.error(
+            "No fue posible cargar eventos:",
+            error
         );
+    }
 
+    cargarDashboard();
+}
+
+
+async function cargarDashboard() {
+    const contenedor = document.getElementById(
+        "dashboardContenido"
+    );
 
     if (!contenedor) {
         return;
     }
-
 
     contenedor.innerHTML = `
 
@@ -132,77 +172,52 @@ async function cargarDashboard() {
 
     `;
 
+    const evento =
+        obtenerEventoSeleccionado();
+
+    const titulo =
+        document.getElementById(
+            "nombreEventoDashboard"
+        );
+
+    if (titulo) {
+        titulo.textContent =
+            evento?.nombre || "Sin Cadenas 2026";
+    }
 
     try {
-
         const respuesta =
-            await listarAsistentesAPI();
-
+            await listarAsistentesAPI(
+                codigoEventoSeleccionado
+            );
 
         if (
             !respuesta ||
             !respuesta.ok ||
             !Array.isArray(respuesta.asistentes)
         ) {
-
             throw new Error(
-                "No fue posible obtener los asistentes."
+                "No fue posible obtener los registros."
             );
-
         }
 
+        const asistentes = respuesta.asistentes;
 
-        const asistentes =
-            respuesta.asistentes;
+        if (evento?.tipo === "ahorro") {
+            renderizarDashboardAhorro(asistentes);
+            return;
+        }
 
-
-        const total =
-            asistentes.length;
-
-
-        const entradas =
-            asistentes.filter(
-                asistente =>
-                    asistente.entrada === true
-            ).length;
-
-
-        const comidas =
-            asistentes.filter(
-                asistente =>
-                    asistente.comida === true
-            ).length;
-
-
-        const snacks =
-            asistentes.filter(
-                asistente =>
-                    asistente.snack === true
-            ).length;
-
-
-        const pendientes =
-            total - entradas;
-
-
-        renderizarDashboard({
-
-            total,
-            entradas,
-            comidas,
-            snacks,
-            pendientes
-
-        });
-
+        renderizarDashboardEvento(
+            asistentes,
+            evento
+        );
 
     } catch (error) {
-
         console.error(
             "Error cargando dashboard:",
             error
         );
-
 
         contenedor.innerHTML = `
 
@@ -219,44 +234,63 @@ async function cargarDashboard() {
             </div>
 
         `;
-
     }
-
 }
 
-function renderizarDashboard(datos) {
 
-    const contenedor =
-        document.getElementById(
-            "dashboardContenido"
-        );
+function renderizarDashboardEvento(
+    asistentes,
+    evento
+) {
+    const total = asistentes.length;
 
+    const entradas = asistentes.filter(
+        asistente => asistente.entrada === true
+    ).length;
+
+    const comidas = asistentes.filter(
+        asistente => asistente.comida === true
+    ).length;
+
+    const snacks = asistentes.filter(
+        asistente => asistente.snack === true
+    ).length;
+
+    const totalCobrado = asistentes.reduce(
+        (totalActual, asistente) =>
+            totalActual +
+            Number(asistente.pagado || 0),
+        0
+    );
+
+    const saldoPendiente = asistentes.reduce(
+        (totalActual, asistente) =>
+            totalActual +
+            Math.max(
+                0,
+                Number(asistente.costo || 0) -
+                Number(asistente.pagado || 0)
+            ),
+        0
+    );
+
+    const liquidados = asistentes.filter(
+        asistente =>
+            Number(asistente.costo || 0) > 0 &&
+            Number(asistente.pagado || 0) >=
+            Number(asistente.costo || 0)
+    ).length;
+
+    const contenedor = document.getElementById(
+        "dashboardContenido"
+    );
 
     if (!contenedor) {
         return;
     }
 
-
-    const porcentajeEntrada =
-        calcularPorcentaje(
-            datos.entradas,
-            datos.total
-        );
-
-
-    const porcentajeComida =
-        calcularPorcentaje(
-            datos.comidas,
-            datos.total
-        );
-
-
-    const porcentajeSnack =
-        calcularPorcentaje(
-            datos.snacks,
-            datos.total
-        );
-
+    const esSinCadenas =
+        evento?.codigo === "SEP26";
 
     contenedor.innerHTML = `
 
@@ -265,29 +299,92 @@ function renderizarDashboard(datos) {
             ${crearTarjetaDashboard(
                 "👥",
                 "Registrados",
-                datos.total
+                total
             )}
 
             ${crearTarjetaDashboard(
-                "🚪",
-                "Entradas",
-                datos.entradas
+                "💰",
+                "Cobrado",
+                formatearDineroDashboard(totalCobrado)
             )}
 
             ${crearTarjetaDashboard(
-                "🍽️",
-                "Comidas",
-                datos.comidas
+                "⏳",
+                "Pendiente",
+                formatearDineroDashboard(saldoPendiente)
             )}
 
             ${crearTarjetaDashboard(
-                "🍿",
-                "Snacks",
-                datos.snacks
+                "✅",
+                "Liquidados",
+                liquidados
             )}
 
         </div>
 
+        ${
+            esSinCadenas
+                ? crearResumenServicios(
+                    total,
+                    entradas,
+                    comidas,
+                    snacks
+                )
+                : crearResumenEntrada(
+                    total,
+                    entradas
+                )
+        }
+
+    `;
+}
+
+
+function renderizarDashboardAhorro(servidores) {
+    const saldoTotal = servidores.reduce(
+        (totalActual, servidor) =>
+            totalActual +
+            Number(servidor.pagado || 0),
+        0
+    );
+
+    const contenedor = document.getElementById(
+        "dashboardContenido"
+    );
+
+    if (!contenedor) {
+        return;
+    }
+
+    contenedor.innerHTML = `
+
+        <div class="dashboard-grid">
+
+            ${crearTarjetaDashboard(
+                "👥",
+                "Servidores",
+                servidores.length
+            )}
+
+            ${crearTarjetaDashboard(
+                "🏦",
+                "Saldo ahorrado",
+                formatearDineroDashboard(saldoTotal)
+            )}
+
+        </div>
+
+    `;
+}
+
+
+function crearResumenServicios(
+    total,
+    entradas,
+    comidas,
+    snacks
+) {
+    return `
 
         <div class="dashboard-pendientes">
 
@@ -296,47 +393,74 @@ function renderizarDashboard(datos) {
             </span>
 
             <strong>
-                ${datos.pendientes}
+                ${total - entradas}
             </strong>
 
         </div>
-
 
         <div class="dashboard-progreso">
 
             ${crearProgresoDashboard(
                 "🚪 Entrada",
-                datos.entradas,
-                datos.total,
-                porcentajeEntrada
+                entradas,
+                total
             )}
 
             ${crearProgresoDashboard(
                 "🍽️ Comida",
-                datos.comidas,
-                datos.total,
-                porcentajeComida
+                comidas,
+                total
             )}
 
             ${crearProgresoDashboard(
                 "🍿 Snack",
-                datos.snacks,
-                datos.total,
-                porcentajeSnack
+                snacks,
+                total
             )}
 
         </div>
 
     `;
-
 }
+
+
+function crearResumenEntrada(
+    total,
+    entradas
+) {
+    return `
+
+        <div class="dashboard-pendientes">
+
+            <span>
+                ⏳ Pendientes por llegar
+            </span>
+
+            <strong>
+                ${total - entradas}
+            </strong>
+
+        </div>
+
+        <div class="dashboard-progreso">
+
+            ${crearProgresoDashboard(
+                "🚪 Entrada",
+                entradas,
+                total
+            )}
+
+        </div>
+
+    `;
+}
+
 
 function crearTarjetaDashboard(
     icono,
     titulo,
     valor
 ) {
-
     return `
 
         <div class="dashboard-stat">
@@ -356,15 +480,18 @@ function crearTarjetaDashboard(
         </div>
 
     `;
-
 }
+
 
 function crearProgresoDashboard(
     nombre,
     valor,
-    total,
-    porcentaje
+    total
 ) {
+    const porcentaje = calcularPorcentaje(
+        valor,
+        total
+    );
 
     return `
 
@@ -384,7 +511,6 @@ function crearProgresoDashboard(
 
             </div>
 
-
             <div class="dashboard-barra">
 
                 <div
@@ -398,22 +524,27 @@ function crearProgresoDashboard(
         </div>
 
     `;
-
 }
+
+
+function formatearDineroDashboard(monto) {
+    return "$" + Number(monto || 0)
+        .toLocaleString("es-MX", {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+        });
+}
+
 
 function calcularPorcentaje(
     valor,
     total
 ) {
-
     if (!total) {
         return 0;
     }
 
-
     return Math.round(
         (valor / total) * 100
     );
-
 }
-

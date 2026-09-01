@@ -2,17 +2,13 @@ const API_URL =
     "https://script.google.com/macros/s/AKfycbxmQ0I6-EazBUQtOgxoaxlEl5YjCMDrohjiKjw86LEeXOwRCsBjGDSVH-QoO8YuL7s6/exec";
 
 
-async function registrarAsistenteAPI(datos) {
-
+async function llamarAPI(accion, datos = {}) {
     const respuesta = await fetch(API_URL, {
-
         method: "POST",
-
         body: JSON.stringify({
-            accion: "registrarAsistente",
-            datos: datos
+            accion: accion,
+            ...datos
         })
-
     });
 
     if (!respuesta.ok) {
@@ -22,182 +18,116 @@ async function registrarAsistenteAPI(datos) {
     }
 
     return await respuesta.json();
-
 }
 
-async function registrarAbonoAPI(id, monto) {
 
-    const respuesta = await fetch(API_URL, {
+async function listarEventosAPI() {
+    return llamarAPI("listarEventos");
+}
 
-        method: "POST",
 
-        body: JSON.stringify({
-            accion: "registrarAbono",
-            id: id,
-            monto: monto
-        })
-
+async function registrarAsistenteAPI(
+    datos,
+    evento = "SEP26"
+) {
+    return llamarAPI("registrarAsistente", {
+        datos: datos,
+        evento: evento
     });
-
-    if (!respuesta.ok) {
-
-        throw new Error(
-            `Error de comunicación: ${respuesta.status}`
-        );
-
-    }
-
-    return await respuesta.json();
-
 }
 
-async function obtenerHistorialPagosAPI(id) {
 
-    const respuesta = await fetch(API_URL, {
-
-        method: "POST",
-
-        body: JSON.stringify({
-            accion: "obtenerHistorialPagos",
-            id: id
-        })
-
+async function buscarAsistenteAPI(
+    id,
+    evento
+) {
+    return llamarAPI("buscarAsistente", {
+        id: id,
+        evento: evento
     });
-
-
-    if (!respuesta.ok) {
-
-        throw new Error(
-            `Error de comunicación: ${respuesta.status}`
-        );
-
-    }
-
-
-    return await respuesta.json();
-
 }
 
-async function buscarAsistenteAPI(id) {
 
-    const respuesta = await fetch(API_URL, {
-
-        method: "POST",
-
-        body: JSON.stringify({
-            accion: "buscarAsistente",
-            id: id
-        })
-
+async function listarAsistentesAPI(
+    evento = "SEP26"
+) {
+    return llamarAPI("listarAsistentes", {
+        evento: evento
     });
-
-
-    if (!respuesta.ok) {
-
-        throw new Error(
-            `Error de comunicación: ${respuesta.status}`
-        );
-
-    }
-
-
-    return await respuesta.json();
-
 }
 
-async function listarAsistentesAPI() {
 
-    const respuesta = await fetch(API_URL, {
-
-        method: "POST",
-
-        body: JSON.stringify({
-            accion: "listarAsistentes"
-        })
-
+async function registrarAbonoAPI(
+    id,
+    monto,
+    evento
+) {
+    return llamarAPI("registrarAbono", {
+        id: id,
+        monto: monto,
+        evento: evento
     });
-
-
-    if (!respuesta.ok) {
-
-        throw new Error(
-            `Error de comunicación: ${respuesta.status}`
-        );
-
-    }
-
-
-    return await respuesta.json();
-
 }
+
+
+async function obtenerHistorialPagosAPI(
+    id,
+    evento
+) {
+    return llamarAPI("obtenerHistorialPagos", {
+        id: id,
+        evento: evento
+    });
+}
+
+
+async function registrarMovimientoServidorAPI(
+    id,
+    tipo,
+    monto,
+    concepto
+) {
+    return llamarAPI("registrarMovimientoServidor", {
+        id: id,
+        tipo: tipo,
+        monto: monto,
+        concepto: concepto
+    });
+}
+
+
+async function obtenerMovimientosServidorAPI(id) {
+    return llamarAPI("obtenerMovimientosServidor", {
+        id: id
+    });
+}
+
 
 async function registrarServicioAPI(
     tipo,
     id
 ) {
-
-    const respuesta = await fetch(API_URL, {
-
-        method: "POST",
-
-        body: JSON.stringify({
-
-            accion: "registrarServicio",
-
-            tipo: tipo,
-
-            id: id
-
-        })
-
+    return llamarAPI("registrarServicio", {
+        tipo: tipo,
+        id: id
     });
-
-
-    if (!respuesta.ok) {
-
-        throw new Error(
-            `Error de comunicación: ${respuesta.status}`
-        );
-
-    }
-
-
-    return await respuesta.json();
-
 }
 
-async function editarAsistenteAPI(id, datos) {
-  const respuesta = await fetch(API_URL, {
-    method: "POST",
-    body: JSON.stringify({
-      accion: "editarAsistente",
-      id: id,
-      datos: datos
-    })
-  });
 
-  if (!respuesta.ok) {
-    throw new Error(
-      `Error de comunicación: ${respuesta.status}`
-    );
-  }
-
-  return await respuesta.json();
+async function editarAsistenteAPI(
+    id,
+    datos
+) {
+    return llamarAPI("editarAsistente", {
+        id: id,
+        datos: datos
+    });
 }
+
+
 async function eliminarAsistenteAPI(id) {
-  const respuesta = await fetch(API_URL, {
-    method: "POST",
-    body: JSON.stringify({
-      accion: "eliminarAsistente",
-      id: id
-    })
-  });
-
-  if (!respuesta.ok) {
-    throw new Error(
-      `Error de comunicación: ${respuesta.status}`
-    );
-  }
-
-  return await respuesta.json();
+    return llamarAPI("eliminarAsistente", {
+        id: id
+    });
 }
+
