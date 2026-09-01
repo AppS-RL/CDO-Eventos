@@ -1129,7 +1129,7 @@ function mostrarResultadoAsistente(asistente) {
         document.getElementById(
             "resultadoBusqueda"
         );
-        
+
         const evento =
         obtenerEventoDeRegistro(asistente) || {
             codigo: "SEP26",
@@ -1141,6 +1141,13 @@ function mostrarResultadoAsistente(asistente) {
     const costoEvento =
         Number(asistente.costo || evento.costo || 0);
 
+        if (evento.tipo === "ahorro") {
+        mostrarResultadoServidor(
+            asistente,
+            evento
+        );
+        return;
+    }
 
     resultado.innerHTML = `
 
@@ -1716,6 +1723,455 @@ function mostrarResultadoAsistente(asistente) {
     evento.codigo
 );
 
+}
+
+function mostrarResultadoServidor(
+    servidor,
+    evento
+) {
+    const resultado = document.getElementById(
+        "resultadoBusqueda"
+    );
+
+    if (!resultado) {
+        return;
+    }
+
+    const saldo = Number(
+        servidor.pagado || 0
+    );
+
+    resultado.innerHTML = `
+
+        <div class="resultado-asistente">
+
+            <div class="resultado-icono">
+                👤
+            </div>
+
+            <h2>
+                ${escaparHTML(servidor.nombre)}
+            </h2>
+
+            <div class="resultado-id">
+                ${escaparHTML(servidor.id)}
+            </div>
+
+            <div class="datos-asistente">
+
+                <div>
+                    <span>📞 Teléfono</span>
+                    <strong>
+                        ${
+                            servidor.telefono
+                                ? escaparHTML(
+                                    servidor.telefono
+                                )
+                                : "Sin teléfono"
+                        }
+                    </strong>
+                </div>
+
+                <div>
+                    <span>🎂 Edad</span>
+                    <strong>
+                        ${
+                            servidor.edad
+                                ? escaparHTML(
+                                    servidor.edad
+                                ) + " años"
+                                : "Sin edad"
+                        }
+                    </strong>
+                </div>
+
+            </div>
+
+            <div class="pago-asistente">
+
+                <h3>🏦 Ahorro Servidores</h3>
+
+                <div class="datos-pago">
+
+                    <div>
+                        <span>Saldo disponible</span>
+                        <strong>
+                            $${saldo.toFixed(2)}
+                        </strong>
+                    </div>
+
+                </div>
+
+                <div
+                    id="historialMovimientosServidor"
+                    class="historial-pagos"
+                >
+                    <h4>📋 Historial de movimientos</h4>
+
+                    <div class="historial-cargando">
+                        Cargando movimientos...
+                    </div>
+                </div>
+
+                <button
+                    id="btnRegistrarAhorro"
+                    class="boton principal"
+                    type="button"
+                >
+                    💰 Registrar ahorro
+                </button>
+
+                <button
+                    id="btnRegistrarRetiro"
+                    class="boton"
+                    type="button"
+                >
+                    💸 Registrar retiro
+                </button>
+
+                <button
+                    id="btnEnviarHistorialServidor"
+                    class="boton"
+                    type="button"
+                >
+                    🧾 Enviar historial
+                </button>
+
+                <button
+                    id="btnCompartirQR"
+                    class="boton"
+                    type="button"
+                >
+                    📤 Compartir QR
+                </button>
+
+            </div>
+
+        </div>
+
+    `;
+
+    document
+        .getElementById("btnRegistrarAhorro")
+        .addEventListener(
+            "click",
+            () => solicitarMovimientoServidor(
+                servidor,
+                "ahorro",
+                evento
+            )
+        );
+
+    document
+        .getElementById("btnRegistrarRetiro")
+        .addEventListener(
+            "click",
+            () => solicitarMovimientoServidor(
+                servidor,
+                "retiro",
+                evento
+            )
+        );
+
+        document
+        .getElementById("btnEnviarHistorialServidor")
+        .addEventListener(
+            "click",
+            () => enviarHistorialServidorPorWhatsApp(
+                servidor,
+                evento
+            )
+        );
+
+    document
+        .getElementById("btnCompartirQR")
+        .addEventListener(
+            "click",
+            () => compartirQR(servidor)
+        );
+
+    cargarMovimientosServidor(servidor.id);
+}
+
+
+async function solicitarMovimientoServidor(
+    servidor,
+    tipo,
+    evento
+) {
+    const textoMonto = prompt(
+        tipo === "ahorro"
+            ? "¿Cuánto deseas registrar como ahorro?"
+            : "¿Cuánto deseas retirar?"
+    );
+
+    if (
+        textoMonto === null ||
+        textoMonto.trim() === ""
+    ) {
+        return;
+    }
+
+    const monto = Number(
+        textoMonto.replace(",", ".")
+    );
+
+    if (!Number.isFinite(monto) || monto <= 0) {
+        alert("Ingresa un monto válido.");
+        return;
+    }
+
+    let concepto = "";
+
+    if (tipo === "retiro") {
+        concepto = prompt(
+            "Indica el concepto del retiro:"
+        );
+
+        if (
+            concepto === null ||
+            concepto.trim() === ""
+        ) {
+            alert(
+                "El concepto del retiro es obligatorio."
+            );
+            return;
+        }
+    }
+
+    try {
+        const resultado =
+            await registrarMovimientoServidorAPI(
+                servidor.id,
+                tipo,
+                monto,
+                concepto
+            );
+
+        if (!resultado.ok) {
+            throw new Error(
+                resultado.mensaje ||
+                "No fue posible registrar el movimiento."
+            );
+        }
+
+        alert(resultado.mensaje);
+
+        servidor.pagado = resultado.saldo;
+
+        mostrarResultadoServidor(
+            servidor,
+            evento
+        );
+
+    } catch (error) {
+        console.error(error);
+
+        alert(
+            "No fue posible registrar el movimiento.\n\n" +
+            error.message
+        );
+    }
+}
+
+
+async function cargarMovimientosServidor(id) {
+    const contenedor = document.getElementById(
+        "historialMovimientosServidor"
+    );
+
+    if (!contenedor) {
+        return;
+    }
+
+    try {
+        const resultado =
+            await obtenerMovimientosServidorAPI(id);
+
+        if (!resultado.ok) {
+            throw new Error(
+                resultado.mensaje ||
+                "No fue posible cargar movimientos."
+            );
+        }
+
+        const movimientos =
+            resultado.movimientos || [];
+
+        if (!movimientos.length) {
+            contenedor.innerHTML = `
+
+                <h4>📋 Historial de movimientos</h4>
+
+                <div class="historial-vacio">
+                    Sin movimientos registrados.
+                </div>
+
+            `;
+
+            return;
+        }
+
+        contenedor.innerHTML = `
+
+            <h4>📋 Historial de movimientos</h4>
+
+            <div class="lista-historial-pagos">
+
+                ${movimientos.map(movimiento => `
+
+                    <div class="historial-pago">
+
+                        <div class="historial-pago-fecha">
+                            ${formatearFechaPago(
+                                movimiento.fecha
+                            )}
+                        </div>
+
+                        <div class="historial-pago-datos">
+
+                            <div>
+                                <span>
+                                    ${escaparHTML(
+                                        movimiento.tipo
+                                    )}
+                                </span>
+
+                                <strong>
+                                    $${Number(
+                                        movimiento.monto || 0
+                                    ).toFixed(2)}
+                                </strong>
+                            </div>
+
+                            <small>
+                                ${
+                                    escaparHTML(
+                                        movimiento.concepto ||
+                                        ""
+                                    )
+                                }
+                                · Saldo: $${Number(
+                                    movimiento.saldo || 0
+                                ).toFixed(2)}
+                            </small>
+
+                        </div>
+
+                    </div>
+
+                `).join("")}
+
+            </div>
+
+        `;
+
+    } catch (error) {
+        console.error(error);
+
+        contenedor.innerHTML = `
+
+            <h4>📋 Historial de movimientos</h4>
+
+            <div class="historial-vacio">
+                No fue posible cargar movimientos.
+            </div>
+
+        `;
+    }
+}
+
+async function enviarHistorialServidorPorWhatsApp(
+    servidor,
+    evento
+) {
+    const telefono = String(
+        servidor.telefono || ""
+    ).replace(/\D/g, "");
+
+    if (!telefono) {
+        alert(
+            "Este servidor no tiene un teléfono registrado."
+        );
+        return;
+    }
+
+    try {
+        const resultado =
+            await obtenerMovimientosServidorAPI(
+                servidor.id
+            );
+
+        if (!resultado.ok) {
+            throw new Error(
+                resultado.mensaje ||
+                "No fue posible obtener el historial."
+            );
+        }
+
+        const movimientos =
+            resultado.movimientos || [];
+
+        let mensaje =
+            "Hola " + servidor.nombre + " 👋\n\n" +
+            "Este es tu historial de " +
+            evento.nombre + ".\n\n" +
+            "🆔 ID: " + servidor.id + "\n\n" +
+            "📋 Movimientos:\n\n";
+
+        if (!movimientos.length) {
+            mensaje +=
+                "No hay movimientos registrados.\n\n";
+
+        } else {
+            movimientos.forEach(movimiento => {
+                mensaje +=
+                    "• " +
+                    formatearFechaPago(
+                        movimiento.fecha
+                    ) +
+                    " — " +
+                    movimiento.tipo +
+                    ": $" +
+                    Number(
+                        movimiento.monto || 0
+                    ).toFixed(2);
+
+                if (movimiento.concepto) {
+                    mensaje +=
+                        "\n  Concepto: " +
+                        movimiento.concepto;
+                }
+
+                mensaje += "\n";
+            });
+
+            mensaje += "\n";
+        }
+
+        mensaje +=
+            "🏦 Saldo disponible: $" +
+            Number(
+                servidor.pagado || 0
+            ).toFixed(2) +
+            "\n\nGracias por tu compromiso.";
+
+        window.open(
+            "https://wa.me/" +
+            telefono +
+            "?text=" +
+            encodeURIComponent(mensaje),
+            "_blank"
+        );
+
+    } catch (error) {
+        console.error(error);
+
+        alert(
+            "No fue posible enviar el historial.\n\n" +
+            error.message
+        );
+    }
 }
 
 async function cargarHistorialPagos(
