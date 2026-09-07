@@ -22,7 +22,7 @@ function mostrarInicio() {
                 </button>
 
                 <footer>
-                    Versión 0.1
+                    Versión 2.0
                 </footer>
 
             </section>
@@ -36,7 +36,7 @@ document
 
         if (solicitarAccesoAdministrador()) {
 
-            cargarVista("asistentes");
+            mostrarListaAsistentes();
 
         }
 

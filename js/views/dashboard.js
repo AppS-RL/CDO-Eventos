@@ -18,6 +18,30 @@ function mostrarDashboard() {
             <main class="app-content">
 
                 <div class="app-card dashboard-card">
+                                    <nav class="lista-nav">
+
+                <button
+                    id="navAsistentes"
+                    class="nav-item"
+                >
+                    👥
+                </button>
+
+                <button
+                    id="navDashboard"
+                    class="nav-item nav-activo"
+                >
+                    📊
+                </button>
+
+                <button
+                    id="navConfiguracion"
+                    class="nav-item"
+                >
+                    ⚙️
+                </button>
+
+            </nav>
 
                     <div class="dashboard-header">
 
@@ -66,30 +90,7 @@ function mostrarDashboard() {
 
             </main>
 
-            <nav class="bottom-nav">
 
-                <button
-                    id="navAsistentes"
-                    class="nav-item"
-                >
-                    👥
-                </button>
-
-                <button
-                    id="navDashboard"
-                    class="nav-item nav-activo"
-                >
-                    📊
-                </button>
-
-                <button
-                    id="navConfiguracion"
-                    class="nav-item"
-                >
-                    ⚙️
-                </button>
-
-            </nav>
 
         </div>
 
@@ -97,7 +98,7 @@ function mostrarDashboard() {
 
     document
         .getElementById("navAsistentes")
-        .addEventListener("click", mostrarAsistentes);
+        .addEventListener("click", mostrarListaAsistentes);
 
     document
         .getElementById("navConfiguracion")

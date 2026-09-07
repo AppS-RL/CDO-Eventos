@@ -2180,3 +2180,41 @@ footer{
     color: #b00020;
 }
 
+.campo select {
+    width: 100%;
+    padding: 14px 15px;
+
+    border: 1px solid #d1d5db;
+    border-radius: 12px;
+
+    background: var(--blanco);
+    color: var(--texto);
+
+    font: inherit;
+    outline: none;
+}
+
+.campo select:focus {
+    border-color: var(--azul);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, .12);
+}
+
+.selector-evento-dashboard {
+    margin-bottom: 22px;
+}
+
+.lista-nav {
+    height: 62px;
+
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+
+    margin-bottom: 14px;
+
+    background: #f9fafb;
+
+    border: 1px solid #e5e7eb;
+    border-radius: 16px;
+}
+

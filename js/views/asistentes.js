@@ -326,7 +326,7 @@ function mostrarFormularioAsistente(asistente = null) {
         .getElementById("btnCancelar")
         .addEventListener(
             "click",
-            mostrarAsistentes
+            mostrarListaAsistentes
         );
 
     document
@@ -1010,7 +1010,7 @@ function mostrarBuscarAsistente() {
         .getElementById("btnCancelarBusqueda")
         .addEventListener(
             "click",
-            mostrarAsistentes
+            mostrarListaAsistentes
         );
 
 
@@ -1202,6 +1202,9 @@ function mostrarResultadoAsistente(asistente) {
             </div>
 
 
+          ${
+    evento.codigo === "SEP26"
+        ? `
             <div class="estado-asistente">
 
                 <h3>Estado del asistente</h3>
@@ -1228,6 +1231,9 @@ function mostrarResultadoAsistente(asistente) {
                 )}
 
             </div>
+          `
+        : ""
+}
 
 
             <div class="pago-asistente">
@@ -2411,23 +2417,43 @@ async function mostrarListaAsistentes() {
 
                 <div class="app-card lista-card">
 
+                    <nav class="lista-nav">
+
+                    <button
+                        id="navListaAsistentes"
+                        class="nav-item nav-activo"
+                        type="button"
+                    >
+                          👥
+                    </button>
+
+                    <button
+                        id="navListaDashboard"
+                        class="nav-item"
+                        type="button"
+                    >
+                          📊
+                    </button>
+
+                    <button
+                        id="navListaConfiguracion"
+                        class="nav-item"
+                        type="button"
+                    >
+                        ⚙️
+                    </button>
+
+                    </nav>
+
                     <div class="lista-acciones">
 
-                        <button
-                            class="boton lista-accion"
-                            type="button"
-                            data-lista-accion="volver"
-                        >
-                            ← Volver
-                        </button>
-
-                        <button
-                            class="boton principal lista-accion"
-                            type="button"
-                            data-lista-accion="nuevo"
-                        >
-                            ＋ Nuevo asistente
-                        </button>
+                    <button
+                        class="boton principal lista-accion"
+                        type="button"
+                        data-lista-accion="nuevo"
+                    >
+                        ＋ Nuevo asistente
+                    </button>
 
                     </div>
 
@@ -2501,13 +2527,7 @@ async function mostrarListaAsistentes() {
 
                     <div class="lista-acciones lista-acciones-inferiores">
 
-                        <button
-                            class="boton lista-accion"
-                            type="button"
-                            data-lista-accion="volver"
-                        >
-                            ← Volver
-                        </button>
+
 
                         <button
                             class="boton principal lista-accion"
@@ -2527,22 +2547,30 @@ async function mostrarListaAsistentes() {
 
     `;
 
-    document
-        .querySelectorAll("[data-lista-accion]")
-        .forEach(boton => {
+document
+    .querySelectorAll("[data-lista-accion]")
+    .forEach(boton => {
 
-            boton.addEventListener("click", () => {
+        boton.addEventListener(
+            "click",
+            mostrarFormularioAsistente
+        );
 
-                if (boton.dataset.listaAccion === "nuevo") {
-                    mostrarFormularioAsistente();
-                    return;
-                }
+    });
 
-                mostrarAsistentes();
+document
+    .getElementById("navListaDashboard")
+    .addEventListener(
+        "click",
+        mostrarDashboard
+    );
 
-            });
-
-        });
+document
+    .getElementById("navListaConfiguracion")
+    .addEventListener(
+        "click",
+        mostrarConfiguracion
+    );
 
     document
         .getElementById("buscarLista")

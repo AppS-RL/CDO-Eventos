@@ -19,6 +19,28 @@ function mostrarConfiguracion() {
 
                 <div class="app-card configuracion-card">
 
+                    <nav class="lista-nav">
+
+                <button
+                    id="navAsistentes"
+                    class="nav-item">
+                    👥
+                </button>
+
+                <button
+                    id="navDashboard"
+                    class="nav-item">
+                    📊
+                </button>
+
+                <button
+                    id="navConfiguracion"
+                    class="nav-item nav-activo">
+                    ⚙️
+                </button>
+
+            </nav>
+
 
                     <div class="config-header">
 
@@ -117,7 +139,7 @@ function mostrarConfiguracion() {
                         </span>
 
                         <strong>
-                            Versión 0.4.1
+                            Versión 2.0
                         </strong>
 
                     </section>
@@ -128,27 +150,6 @@ function mostrarConfiguracion() {
             </main>
 
 
-            <nav class="bottom-nav">
-
-                <button
-                    id="navAsistentes"
-                    class="nav-item">
-                    👥
-                </button>
-
-                <button
-                    id="navDashboard"
-                    class="nav-item">
-                    📊
-                </button>
-
-                <button
-                    id="navConfiguracion"
-                    class="nav-item nav-activo">
-                    ⚙️
-                </button>
-
-            </nav>
 
 
         </div>
@@ -159,8 +160,8 @@ function mostrarConfiguracion() {
     document
         .getElementById("navAsistentes")
         .addEventListener(
-            "click",
-            mostrarAsistentes
+          "click",
+mostrarListaAsistentes
         );
 
 
