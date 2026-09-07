@@ -110,6 +110,57 @@ async function obtenerTotalRecibidoHoyAPI(evento) {
 }
 
 
+async function obtenerCopaGolDeFeAPI(categoria) {
+    return llamarAPI("obtenerCopaGolDeFe", {
+        categoria: categoria
+    });
+}
+
+
+async function registrarEquipoCopaAPI(
+    categoria,
+    nombre,
+    jugadores
+) {
+    return llamarAPI("registrarEquipoCopa", {
+        categoria: categoria,
+        nombre: nombre,
+        jugadores: jugadores
+    });
+}
+
+
+async function eliminarEquipoCopaAPI(
+    categoria,
+    equipoId
+) {
+    return llamarAPI("eliminarEquipoCopa", {
+        categoria: categoria,
+        equipoId: equipoId
+    });
+}
+
+
+async function generarTorneoCopaAPI(categoria) {
+    return llamarAPI("generarTorneoCopa", {
+        categoria: categoria
+    });
+}
+
+
+async function registrarGanadorCopaAPI(
+    categoria,
+    partidoId,
+    equipoId
+) {
+    return llamarAPI("registrarGanadorCopa", {
+        categoria: categoria,
+        partidoId: partidoId,
+        equipoId: equipoId
+    });
+}
+
+
 async function registrarServicioAPI(
     tipo,
     id

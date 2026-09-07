@@ -125,6 +125,64 @@ function mostrarOperador() {
                         </button>
 
 
+                        <button
+                            class="servicio-operador copa copa-varonil"
+                            data-copa-categoria="VARONIL"
+                            type="button"
+                        >
+
+                            <span class="servicio-icono">
+                                ⚽
+                            </span>
+
+                            <div>
+
+                                <strong>
+                                    Copa Gol de Fe · Varonil
+                                </strong>
+
+                                <small>
+                                    Equipos, partidos y resultados
+                                </small>
+
+                            </div>
+
+                            <span class="servicio-flecha">
+                                ›
+                            </span>
+
+                        </button>
+
+
+                        <button
+                            class="servicio-operador copa copa-femenil"
+                            data-copa-categoria="FEMENIL"
+                            type="button"
+                        >
+
+                            <span class="servicio-icono">
+                                ⚽
+                            </span>
+
+                            <div>
+
+                                <strong>
+                                    Copa Gol de Fe · Femenil
+                                </strong>
+
+                                <small>
+                                    Equipos, partidos y resultados
+                                </small>
+
+                            </div>
+
+                            <span class="servicio-flecha">
+                                ›
+                            </span>
+
+                        </button>
+
+
                     </div>
 
 
@@ -147,7 +205,7 @@ function mostrarOperador() {
 
     document
         .querySelectorAll(
-            ".servicio-operador"
+            "[data-tipo]"
         )
         .forEach(boton => {
 
@@ -167,6 +225,21 @@ function mostrarOperador() {
 
                 }
             );
+
+        });
+
+
+    document
+        .querySelectorAll("[data-copa-categoria]")
+        .forEach(boton => {
+
+            boton.addEventListener("click", () => {
+
+                mostrarCopaGolDeFe(
+                    boton.dataset.copaCategoria
+                );
+
+            });
 
         });
 
