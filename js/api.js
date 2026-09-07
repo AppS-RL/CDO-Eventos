@@ -103,6 +103,13 @@ async function obtenerMovimientosServidorAPI(id) {
 }
 
 
+async function obtenerTotalRecibidoHoyAPI(evento) {
+    return llamarAPI("obtenerTotalRecibidoHoy", {
+        evento: evento
+    });
+}
+
+
 async function registrarServicioAPI(
     tipo,
     id

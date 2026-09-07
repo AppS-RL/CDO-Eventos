@@ -206,6 +206,7 @@ async function cargarDashboard() {
 
         if (evento?.tipo === "ahorro") {
             renderizarDashboardAhorro(asistentes);
+            cargarTotalRecibidoHoy(evento);
             return;
         }
 
@@ -213,6 +214,8 @@ async function cargarDashboard() {
             asistentes,
             evento
         );
+
+        cargarTotalRecibidoHoy(evento);
 
     } catch (error) {
         console.error(
@@ -323,6 +326,8 @@ function renderizarDashboardEvento(
 
         </div>
 
+        ${crearResumenRecibidoHoy(evento)}
+
         ${
             esSinCadenas
                 ? crearResumenServicios(
@@ -375,7 +380,111 @@ function renderizarDashboardAhorro(servidores) {
 
         </div>
 
+        ${crearResumenRecibidoHoy(
+            obtenerEventoSeleccionado()
+        )}
+
     `;
+}
+
+
+function crearResumenRecibidoHoy(evento) {
+    const etiqueta = evento?.tipo === "ahorro"
+        ? "Ahorro recibido hoy"
+        : "Recibido hoy";
+
+    return `
+
+        <section
+            id="totalRecibidoHoy"
+            class="dashboard-recibido-hoy"
+        >
+            <span>💵 ${etiqueta}</span>
+
+            <strong>Calculando...</strong>
+
+            <small>
+                Solo movimientos registrados el día de hoy.
+            </small>
+        </section>
+
+    `;
+}
+
+
+async function cargarTotalRecibidoHoy(evento) {
+    const contenedor = document.getElementById(
+        "totalRecibidoHoy"
+    );
+
+    if (!contenedor || !evento) {
+        return;
+    }
+
+    const etiqueta = evento.tipo === "ahorro"
+        ? "Ahorro recibido hoy"
+        : "Recibido hoy";
+
+    try {
+        const respuesta = await obtenerTotalRecibidoHoyAPI(
+            evento.codigo
+        );
+
+        if (!respuesta || !respuesta.ok) {
+            throw new Error(
+                respuesta?.mensaje ||
+                "No fue posible calcular el total diario."
+            );
+        }
+
+        const movimientos = Number(
+            respuesta.movimientos || 0
+        );
+
+        contenedor.innerHTML = `
+
+            <span>💵 ${etiqueta}</span>
+
+            <strong>
+                ${formatearDineroDashboard(
+                    respuesta.total || 0
+                )}
+            </strong>
+
+            <small>
+                ${escaparHTML(
+                    respuesta.fecha || "Hoy"
+                )}
+                · ${movimientos}
+                ${movimientos === 1
+                    ? "movimiento"
+                    : "movimientos"}
+            </small>
+
+        `;
+
+    } catch (error) {
+        console.error(
+            "Error calculando el total diario:",
+            error
+        );
+
+        contenedor.classList.add(
+            "dashboard-recibido-error"
+        );
+
+        contenedor.innerHTML = `
+
+            <span>⚠️ ${etiqueta}</span>
+
+            <strong>No disponible</strong>
+
+            <small>
+                Actualiza cuando la conexión esté disponible.
+            </small>
+
+        `;
+    }
 }
 
 

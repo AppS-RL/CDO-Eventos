@@ -2180,6 +2180,90 @@ footer{
     color: #b00020;
 }
 
+.dashboard-recibido-hoy {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    margin: 18px 0;
+    padding: 18px;
+    background: #ecfdf5;
+    border: 1px solid #a7f3d0;
+    border-radius: 16px;
+    color: #065f46;
+    text-align: center;
+}
+
+.dashboard-recibido-hoy span {
+    font-size: 14px;
+    font-weight: 700;
+}
+
+.dashboard-recibido-hoy strong {
+    font-size: 28px;
+}
+
+.dashboard-recibido-hoy small {
+    color: #047857;
+    font-size: 11px;
+}
+
+.dashboard-recibido-error {
+    background: #fff7ed;
+    border-color: #fed7aa;
+    color: #9a3412;
+}
+
+.dashboard-recibido-error small {
+    color: #c2410c;
+}
+
+.historial-vista {
+    padding-top: 0;
+    border-top: 0;
+}
+
+.historial-volver {
+    margin: 0 0 24px;
+}
+
+.historial-identidad {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    margin: 8px 0 20px;
+    color: #6b7280;
+    font-size: 13px;
+}
+
+.historial-identidad strong {
+    color: var(--texto);
+    font-size: 15px;
+}
+
+.historial-pagos-completo {
+    margin-top: 0;
+}
+
+.historial-pagos-completo h4 {
+    font-size: 15px;
+}
+
+.historial-pagos-completo .historial-pago {
+    padding: 13px 14px;
+}
+
+.historial-pagos-completo .historial-pago-fecha,
+.historial-pagos-completo .historial-pago-datos span,
+.historial-pagos-completo .historial-vacio,
+.historial-pagos-completo .historial-error,
+.historial-pagos-completo .historial-cargando {
+    font-size: 12px;
+}
+
+.historial-pagos-completo .historial-pago-datos strong {
+    font-size: 14px;
+}
+
 .campo select {
     width: 100%;
     padding: 14px 15px;

@@ -1266,18 +1266,30 @@ function mostrarResultadoAsistente(asistente) {
 
                 </div>
 
-         <div
-             id="historialPagos"
-             class="historial-pagos"
-         >
+                ${
+                    evento.codigo === "SEP26"
+                        ? `
+                            <div
+                                id="historialPagos"
+                                class="historial-pagos"
+                            >
+                                <h4>📋 Historial de pagos</h4>
 
-          <h4>📋 Historial de pagos</h4>
-
-          <div class="historial-cargando">
-             Cargando historial...
-          </div>
-
-        </div>
+                                <div class="historial-cargando">
+                                    Cargando historial...
+                                </div>
+                            </div>
+                        `
+                        : `
+                            <button
+                                id="btnVerHistorialPagos"
+                                class="boton"
+                                type="button"
+                            >
+                                📋 Ver historial de pagos
+                            </button>
+                        `
+                }
 
                 <button
                     id="btnAbonar"
@@ -1466,6 +1478,20 @@ function mostrarResultadoAsistente(asistente) {
 
             }
         );
+
+    const botonVerHistorial = document.getElementById(
+        "btnVerHistorialPagos"
+    );
+
+    if (botonVerHistorial) {
+        botonVerHistorial.addEventListener(
+            "click",
+            () => mostrarHistorialPagosAsistente(
+                asistente,
+                evento
+            )
+        );
+    }
 
         document
     .getElementById("btnEnviarHistorial")
@@ -1724,10 +1750,12 @@ function mostrarResultadoAsistente(asistente) {
     // CARGAR HISTORIAL DE PAGOS
     // -------------------------
 
-   cargarHistorialPagos(
-    asistente.id,
-    evento.codigo
-);
+    if (evento.codigo === "SEP26") {
+        cargarHistorialPagos(
+            asistente.id,
+            evento.codigo
+        );
+    }
 
 }
 
@@ -1808,16 +1836,13 @@ function mostrarResultadoServidor(
 
                 </div>
 
-                <div
-                    id="historialMovimientosServidor"
-                    class="historial-pagos"
+                <button
+                    id="btnVerHistorialServidor"
+                    class="boton"
+                    type="button"
                 >
-                    <h4>📋 Historial de movimientos</h4>
-
-                    <div class="historial-cargando">
-                        Cargando movimientos...
-                    </div>
-                </div>
+                    📋 Ver historial de movimientos
+                </button>
 
                 <button
                     id="btnRegistrarAhorro"
@@ -1869,6 +1894,16 @@ function mostrarResultadoServidor(
         );
 
     document
+        .getElementById("btnVerHistorialServidor")
+        .addEventListener(
+            "click",
+            () => mostrarHistorialServidor(
+                servidor,
+                evento
+            )
+        );
+
+    document
         .getElementById("btnRegistrarRetiro")
         .addEventListener(
             "click",
@@ -1894,6 +1929,129 @@ function mostrarResultadoServidor(
         .addEventListener(
             "click",
             () => compartirQR(servidor)
+        );
+
+}
+
+
+function mostrarHistorialPagosAsistente(
+    asistente,
+    evento
+) {
+    const resultado = document.getElementById(
+        "resultadoBusqueda"
+    );
+
+    if (!resultado) {
+        return;
+    }
+
+    resultado.innerHTML = `
+
+        <div class="resultado-asistente historial-vista">
+
+            <button
+                id="btnVolverAsistente"
+                class="boton historial-volver"
+                type="button"
+            >
+                ← Volver al asistente
+            </button>
+
+            <div class="resultado-icono">
+                📋
+            </div>
+
+            <h2>Historial de pagos</h2>
+
+            <div class="historial-identidad">
+                <strong>${escaparHTML(asistente.nombre)}</strong>
+                <span>${escaparHTML(asistente.id)}</span>
+            </div>
+
+            <div
+                id="historialPagos"
+                class="historial-pagos historial-pagos-completo"
+            >
+                <div class="historial-cargando">
+                    Cargando historial...
+                </div>
+            </div>
+
+        </div>
+
+    `;
+
+    document
+        .getElementById("btnVolverAsistente")
+        .addEventListener(
+            "click",
+            () => mostrarResultadoAsistente(asistente)
+        );
+
+    cargarHistorialPagos(
+        asistente.id,
+        evento.codigo
+    );
+}
+
+
+function mostrarHistorialServidor(
+    servidor,
+    evento
+) {
+    const resultado = document.getElementById(
+        "resultadoBusqueda"
+    );
+
+    if (!resultado) {
+        return;
+    }
+
+    resultado.innerHTML = `
+
+        <div class="resultado-asistente historial-vista">
+
+            <button
+                id="btnVolverServidor"
+                class="boton historial-volver"
+                type="button"
+            >
+                ← Volver al servidor
+            </button>
+
+            <div class="resultado-icono">
+                📋
+            </div>
+
+            <h2>Historial de movimientos</h2>
+
+            <div class="historial-identidad">
+                <strong>${escaparHTML(servidor.nombre)}</strong>
+                <span>${escaparHTML(servidor.id)}</span>
+            </div>
+
+            <div
+                id="historialMovimientosServidor"
+                class="historial-pagos historial-pagos-completo"
+            >
+                <div class="historial-cargando">
+                    Cargando movimientos...
+                </div>
+            </div>
+
+        </div>
+
+    `;
+
+    document
+        .getElementById("btnVolverServidor")
+        .addEventListener(
+            "click",
+            () => mostrarResultadoServidor(
+                servidor,
+                evento
+            )
         );
 
     cargarMovimientosServidor(servidor.id);
