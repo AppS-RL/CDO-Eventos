@@ -2728,7 +2728,7 @@ document
 
         boton.addEventListener(
             "click",
-            mostrarFormularioAsistente
+            () => mostrarFormularioAsistente()
         );
 
     });
