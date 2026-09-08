@@ -2687,6 +2687,79 @@ footer{
     color: #991b1b;
 }
 
+.copa-confirmacion {
+    padding: 8px 6px 2px;
+    text-align: center;
+}
+
+.copa-confirmacion-icono {
+    width: 58px;
+    height: 58px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 12px;
+    background: #dcfce7;
+    border-radius: 50%;
+    color: #15803d;
+    font-size: 28px;
+    font-weight: 700;
+}
+
+.copa-confirmacion h2 {
+    margin-bottom: 5px;
+    font-size: 21px;
+}
+
+.copa-confirmacion p {
+    color: #6b7280;
+    font-size: 12px;
+}
+
+.copa-envios-reglamento {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.copa-envio-jugador {
+    padding: 14px;
+    background: #f8fafc;
+    border: 1px solid #e5e7eb;
+    border-radius: 14px;
+}
+
+.copa-envio-jugador > div {
+    margin-bottom: 10px;
+}
+
+.copa-envio-jugador strong,
+.copa-envio-jugador small {
+    display: block;
+}
+
+.copa-envio-jugador strong {
+    font-size: 14px;
+}
+
+.copa-envio-jugador small {
+    margin-top: 3px;
+    color: #6b7280;
+    font-size: 10px;
+}
+
+.copa-envio-jugador .copa-boton-whatsapp {
+    margin-bottom: 0;
+    background: #dcfce7;
+    color: #166534;
+    font-size: 13px;
+}
+
+.copa-envio-jugador .copa-boton-whatsapp:disabled {
+    cursor: default;
+    opacity: .5;
+}
+
 @media (max-width: 600px) {
     .copa-card {
         gap: 15px;

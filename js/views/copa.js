@@ -1,4 +1,6 @@
 const COPA_EVENTO_CODIGO = "SEP26";
+const COPA_REGLAMENTO_URL =
+    "https://apps-rl.github.io/CDO-Eventos/docs/reglamento-copa-gol-de-fe.pdf";
 
 let copaCategoriaActual = "";
 let copaJugadoresRegistro = [];
@@ -594,7 +596,8 @@ async function procesarJugadorCopa(id) {
 
         copaJugadoresRegistro.push({
             id: respuesta.asistente.id,
-            nombre: respuesta.asistente.nombre
+            nombre: respuesta.asistente.nombre,
+            telefono: respuesta.asistente.telefono || ""
         });
 
         actualizarJugadoresRegistroCopa();
@@ -707,6 +710,10 @@ async function guardarEquipoCopa() {
 
     copaAccionEnProceso = true;
 
+    const jugadoresRegistrados = copaJugadoresRegistro.map(
+        jugador => ({ ...jugador })
+    );
+
     const boton = document.getElementById("btnGuardarEquipoCopa");
 
     if (boton) {
@@ -729,7 +736,13 @@ async function guardarEquipoCopa() {
         }
 
         await detenerScannerQR();
-        await mostrarCopaGolDeFe(copaCategoriaActual);
+        mostrarConfirmacionEquipoCopa({
+            id: respuesta.equipo?.id || "",
+            nombre: respuesta.equipo?.nombre || nombre,
+            categoria:
+                respuesta.equipo?.categoria || copaCategoriaActual,
+            jugadores: jugadoresRegistrados
+        });
 
     } catch (error) {
         console.error(error);
@@ -743,6 +756,135 @@ async function guardarEquipoCopa() {
     } finally {
         copaAccionEnProceso = false;
     }
+}
+
+
+function mostrarConfirmacionEquipoCopa(equipo) {
+    const app = document.getElementById("app");
+    const jugadores = obtenerJugadoresEquipoCopa(equipo);
+    const categoria = formatearCategoriaCopa(equipo.categoria);
+
+    app.innerHTML = `
+        <div class="app">
+            <header class="app-header copa-header">
+                <h1>⚽ Equipo registrado</h1>
+                <p>Copa Gol de Fe · ${escaparHTMLCopa(categoria)}</p>
+            </header>
+
+            <main class="app-content">
+                <div class="app-card operador-card copa-card">
+                    <section class="copa-confirmacion">
+                        <div class="copa-confirmacion-icono">✓</div>
+                        <h2>${escaparHTMLCopa(equipo.nombre)}</h2>
+                        <p>
+                            Envía el reglamento a cada jugador antes de terminar.
+                        </p>
+                    </section>
+
+                    <div class="copa-envios-reglamento">
+                        ${jugadores.map((jugador, indice) => {
+                            const tieneTelefono = Boolean(
+                                String(jugador.telefono || "")
+                                    .replace(/\D/g, "")
+                            );
+
+                            return `
+                                <article class="copa-envio-jugador">
+                                    <div>
+                                        <strong>${escaparHTMLCopa(jugador.nombre)}</strong>
+                                        <small>
+                                            ${
+                                                tieneTelefono
+                                                    ? "WhatsApp listo"
+                                                    : "Sin teléfono registrado"
+                                            }
+                                        </small>
+                                    </div>
+                                    <button
+                                        class="boton copa-boton-whatsapp"
+                                        data-enviar-reglamento="${indice}"
+                                        type="button"
+                                        ${tieneTelefono ? "" : "disabled"}
+                                    >
+                                        📲 Enviar reglamento
+                                    </button>
+                                </article>
+                            `;
+                        }).join("")}
+                    </div>
+
+                    <button
+                        id="btnVerReglamentoCopa"
+                        class="boton"
+                        type="button"
+                    >
+                        📄 Ver reglamento
+                    </button>
+
+                    <button
+                        id="btnTerminarRegistroCopa"
+                        class="boton principal"
+                        type="button"
+                    >
+                        Terminar y volver al torneo
+                    </button>
+                </div>
+            </main>
+        </div>
+    `;
+
+    document
+        .querySelectorAll("[data-enviar-reglamento]")
+        .forEach(boton => {
+            boton.addEventListener("click", () => {
+                const jugador = jugadores[
+                    Number(boton.dataset.enviarReglamento)
+                ];
+
+                enviarReglamentoCopaWhatsApp(jugador, equipo);
+            });
+        });
+
+    document
+        .getElementById("btnVerReglamentoCopa")
+        .addEventListener("click", () => {
+            window.open(COPA_REGLAMENTO_URL, "_blank");
+        });
+
+    document
+        .getElementById("btnTerminarRegistroCopa")
+        .addEventListener("click", () => {
+            mostrarCopaGolDeFe(copaCategoriaActual);
+        });
+}
+
+
+function enviarReglamentoCopaWhatsApp(jugador, equipo) {
+    const telefono = String(jugador?.telefono || "")
+        .replace(/\D/g, "");
+
+    if (!telefono) {
+        alert("Este jugador no tiene un teléfono registrado.");
+        return;
+    }
+
+    const categoria = formatearCategoriaCopa(equipo.categoria);
+    const mensaje =
+        "Hola " + jugador.nombre + " 👋\n\n" +
+        "Tu equipo *" + equipo.nombre + "* quedó registrado en " +
+        "la Copa Gol de Fe · " + categoria + ".\n\n" +
+        "📄 Aquí puedes consultar el reglamento oficial:\n" +
+        COPA_REGLAMENTO_URL + "\n\n" +
+        "Por favor léelo antes de participar y consérvalo " +
+        "para cualquier consulta.";
+
+    window.open(
+        "https://wa.me/" +
+        telefono +
+        "?text=" +
+        encodeURIComponent(mensaje),
+        "_blank"
+    );
 }
 
 
