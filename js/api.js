@@ -174,11 +174,13 @@ async function registrarServicioAPI(
 
 async function editarAsistenteAPI(
     id,
-    datos
+    datos,
+    evento
 ) {
     return llamarAPI("editarAsistente", {
         id: id,
-        datos: datos
+        datos: datos,
+        evento: evento
     });
 }
 

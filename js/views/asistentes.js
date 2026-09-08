@@ -120,6 +120,9 @@ function mostrarFormularioAsistente(asistente = null) {
     const esAhorro =
         eventoActual.tipo === "ahorro";
 
+    const esEdicionAhorro =
+        esEdicion && esAhorro;
+
     const etiquetaMonto = esAhorro
         ? "Ahorro inicial"
         : "Abono inicial";
@@ -129,19 +132,6 @@ function mostrarFormularioAsistente(asistente = null) {
         : "Costo $" + Number(
             eventoActual.costo
         ).toLocaleString("es-MX");
-
-    if (
-        esEdicion &&
-        eventoActual.codigo !== "SEP26"
-    ) {
-        alert(
-            "La edición de este evento se agregará " +
-            "en el siguiente paso."
-        );
-
-        mostrarListaAsistentes();
-        return;
-    }
 
     app.innerHTML = `
 
@@ -174,7 +164,9 @@ function mostrarFormularioAsistente(asistente = null) {
                         <p>
                             ${
                                 esEdicion
-                                    ? "Actualiza sus datos y corrige el total pagado si es necesario."
+                                    ? esAhorro
+                                        ? "Actualiza sus datos. El saldo se modifica únicamente con ahorros o retiros."
+                                        : "Actualiza sus datos y corrige el total pagado si es necesario."
                                     : "Ingresa los datos para generar su registro y código QR."
                             }
                         </p>
@@ -249,27 +241,33 @@ function mostrarFormularioAsistente(asistente = null) {
 
                         </div>
 
-                        <div class="campo">
+                        ${
+    esEdicionAhorro
+        ? ""
+        : `
+<div class="campo">
 
-                            <label for="abonoInicial">
-                                ${etiquetaMonto}
-                            </label>
+    <label for="abonoInicial">
+        ${etiquetaMonto}
+    </label>
 
-                            <input
-                                id="abonoInicial"
-                                type="number"
-                                min="0"
-                                ${
-                                    esAhorro
-                                        ? ""
-                                        : `max="${eventoActual.costo}"`
-                                }
-                                step="0.01"
-                                inputmode="decimal"
-                                placeholder="${textoMonto}"
-                            >
+    <input
+        id="abonoInicial"
+        type="number"
+        min="0"
+        ${
+            esAhorro
+                ? ""
+                : `max="${eventoActual.costo}"`
+        }
+        step="0.01"
+        inputmode="decimal"
+        placeholder="${textoMonto}"
+    >
 
-                        </div>
+</div>
+          `
+}
 
                         <button
                             id="btnGuardar"
@@ -314,12 +312,17 @@ function mostrarFormularioAsistente(asistente = null) {
         document.getElementById("observaciones").value =
             asistente.observaciones || "";
 
-        document
-            .querySelector('label[for="abonoInicial"]')
-            .textContent = "Total pagado";
+        const campoMonto =
+            document.getElementById("abonoInicial");
 
-        document.getElementById("abonoInicial").value =
-            Number(asistente.pagado || 0).toFixed(2);
+        if (campoMonto) {
+            document
+                .querySelector('label[for="abonoInicial"]')
+                .textContent = "Total pagado";
+
+            campoMonto.value =
+                Number(asistente.pagado || 0).toFixed(2);
+        }
     }
 
     document
@@ -336,6 +339,7 @@ function mostrarFormularioAsistente(asistente = null) {
             esEdicion
                 ? evento => guardarEdicionAsistente(
                     evento,
+                    eventoActual,
                     asistente.id
                 )
                 : guardarNuevoAsistente
@@ -635,11 +639,18 @@ function mostrarRegistroExitoso(asistente) {
 }
 
 
-async function guardarEdicionAsistente(evento, id) {
+async function guardarEdicionAsistente(
+    eventoFormulario,
+    eventoActual,
+    id
+) {
 
-    evento.preventDefault();
+    eventoFormulario.preventDefault();
 
     const boton = document.getElementById("btnGuardar");
+
+    const campoMonto =
+        document.getElementById("abonoInicial");
 
     const datos = {
         nombre: document.getElementById("nombre").value.trim(),
@@ -648,7 +659,9 @@ async function guardarEdicionAsistente(evento, id) {
         observaciones:
             document.getElementById("observaciones").value.trim(),
         totalPagado:
-            document.getElementById("abonoInicial").value.trim()
+            campoMonto
+                ? campoMonto.value.trim()
+                : ""
     };
 
     if (!datos.nombre) {
@@ -661,7 +674,11 @@ async function guardarEdicionAsistente(evento, id) {
         boton.disabled = true;
         boton.textContent = "Guardando...";
 
-        const resultado = await editarAsistenteAPI(id, datos);
+        const resultado = await editarAsistenteAPI(
+            id,
+            datos,
+            eventoActual.codigo
+        );
 
         if (!resultado.ok) {
             throw new Error(
