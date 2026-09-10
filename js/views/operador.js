@@ -235,9 +235,16 @@ function mostrarOperador() {
 
             boton.addEventListener("click", () => {
 
-                mostrarCopaGolDeFe(
-                    boton.dataset.copaCategoria
-                );
+                const categoria =
+                    boton.dataset.copaCategoria;
+
+                if (
+                    solicitarClaveServicio(
+                        categoria.toLowerCase()
+                    )
+                ) {
+                    mostrarCopaGolDeFe(categoria);
+                }
 
             });
 

@@ -74,7 +74,9 @@ function solicitarClaveServicio(tipo) {
 
         entrada: "Entrada",
         comida: "Comida",
-        snack: "Snack"
+        snack: "Snack",
+        varonil: "Varonil",
+        femenil: "Femenil"
 
     };
 
