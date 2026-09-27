@@ -1,0 +1,21 @@
+{
+  "name": "CDO Eventos",
+  "short_name": "CDO Eventos",
+  "description": "Gestión de eventos de Jóvenes 18+.",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#062a70",
+  "theme_color": "#062a70",
+  "icons": [
+    {
+      "src": "assets/icons/jovenes-18-plus-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "assets/icons/jovenes-18-plus-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
