@@ -1,40 +1,24 @@
 function editarAsistente(id, datos, codigoEvento) {
   const libro = SpreadsheetApp.getActiveSpreadsheet();
 
-  const codigo = obtenerCodigoEdicion_(
+  const evento = obtenerEventoDeSolicitud(
     codigoEvento,
     id
   );
 
-  const configuraciones = {
-    SEP26: {
-      hoja: "Asistentes",
-      historial: "Historial Pagos",
-      costo: 400,
-      tipo: "evento"
-    },
-    CAMP27: {
-      hoja: "Campamento",
-      historial: "Historial Campamento",
-      costo: 3900,
-      tipo: "evento"
-    },
-    SERVIDORES: {
-      hoja: "Servidores",
-      historial: "Movimientos Servidores",
-      costo: 0,
-      tipo: "ahorro"
-    }
-  };
-
-  const configuracion = configuraciones[codigo];
-
-  if (!configuracion) {
+  if (!evento) {
     return {
       ok: false,
       mensaje: "Evento no válido para edición."
     };
   }
+
+  const configuracion = {
+    hoja: evento.hojaRegistros,
+    historial: evento.hojaHistorial,
+    costo: Number(evento.costo) || 0,
+    tipo: evento.tipo
+  };
 
   const hoja = libro.getSheetByName(
     configuracion.hoja
@@ -165,25 +149,10 @@ function editarAsistente(id, datos, codigoEvento) {
 
 
 function obtenerCodigoEdicion_(codigoEvento, id) {
-  const codigo = String(codigoEvento || "")
-    .trim()
-    .toUpperCase();
+  const evento = obtenerEventoDeSolicitud(
+    codigoEvento,
+    id
+  );
 
-  if (codigo) {
-    return codigo;
-  }
-
-  const identificador = String(id || "")
-    .trim()
-    .toUpperCase();
-
-  if (identificador.indexOf("CAMP27-") === 0) {
-    return "CAMP27";
-  }
-
-  if (identificador.indexOf("SERVIDOR-") === 0) {
-    return "SERVIDORES";
-  }
-
-  return "SEP26";
+  return evento ? evento.codigo : "";
 }

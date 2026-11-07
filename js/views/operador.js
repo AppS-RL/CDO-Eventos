@@ -1,4 +1,27 @@
-function mostrarOperador() {
+async function mostrarOperador() {
+
+    try {
+        await cargarEventosDisponibles();
+    } catch (error) {
+        console.error(
+            "No fue posible cargar eventos:",
+            error
+        );
+    }
+
+    const eventoActual =
+        obtenerEventoSeleccionado() || {
+            codigo: "NAV26",
+            nombre: "Príncipe de paz",
+            prefijo: "NAV26",
+            tipo: "evento"
+        };
+
+    const esSinCadenas =
+        eventoActual.codigo === "SEP26";
+
+    const permiteEntrada =
+        eventoActual.tipo === "evento";
 
     const app = document.getElementById("app");
 
@@ -11,7 +34,7 @@ function mostrarOperador() {
                 <h1>👷 Modo Operador</h1>
 
                 <p>
-                    Sin Cadenas 2026
+                    ${escaparHTML(eventoActual.nombre)}
                 </p>
 
             </header>
@@ -20,6 +43,21 @@ function mostrarOperador() {
             <main class="app-content">
 
                 <div class="app-card operador-card">
+
+                    <div class="campo selector-evento-operador">
+
+                        <label for="selectorEventoOperador">
+                            Evento
+                        </label>
+
+                        <select
+                            id="selectorEventoOperador"
+                            disabled
+                        >
+                            <option>Cargando eventos...</option>
+                        </select>
+
+                    </div>
 
                     <div class="operador-header">
 
@@ -37,6 +75,8 @@ function mostrarOperador() {
 
                     <div class="servicios-operador">
 
+
+                        ${permiteEntrada ? `
 
                         <button
                             class="servicio-operador entrada"
@@ -66,7 +106,18 @@ function mostrarOperador() {
 
                         </button>
 
+                        ` : `
+                            <div class="mensaje-busqueda error-busqueda">
+                                <strong>
+                                    Este módulo no usa control de entrada
+                                </strong>
+                                <p>
+                                    Selecciona un evento de asistentes.
+                                </p>
+                            </div>
+                        `}
 
+                        ${esSinCadenas ? `
                         <button
                             class="servicio-operador comida"
                             data-tipo="comida"
@@ -123,7 +174,6 @@ function mostrarOperador() {
                             </span>
 
                         </button>
-
 
                         <button
                             class="servicio-operador copa copa-varonil"
@@ -182,6 +232,7 @@ function mostrarOperador() {
 
                         </button>
 
+                        ` : ""}
 
                     </div>
 
@@ -201,6 +252,18 @@ function mostrarOperador() {
         </div>
 
     `;
+
+    try {
+        await prepararSelectorEvento(
+            "selectorEventoOperador",
+            mostrarOperador
+        );
+    } catch (error) {
+        console.error(
+            "No fue posible preparar el selector del operador:",
+            error
+        );
+    }
 
 
     document
@@ -262,6 +325,13 @@ function mostrarOperador() {
 
 function abrirServicioOperador(tipo) {
 
+    const eventoActual =
+        obtenerEventoSeleccionado() || {
+            codigo: "NAV26",
+            nombre: "Príncipe de paz",
+            prefijo: "NAV26"
+        };
+
     const configuracion = {
 
         entrada: {
@@ -314,7 +384,8 @@ function abrirServicioOperador(tipo) {
                 </h1>
 
                 <p>
-                    Modo Operador
+                    Modo Operador ·
+                    ${escaparHTML(eventoActual.nombre)}
                 </p>
 
             </header>
@@ -377,7 +448,10 @@ function abrirServicioOperador(tipo) {
                             <input
                                 id="idPruebaOperador"
                                 type="text"
-                                placeholder="Ej. SEP26-0014"
+                                placeholder="Ej. ${escaparHTML(
+                                    eventoActual.prefijo ||
+                                    eventoActual.codigo
+                                )}-0001"
                                 autocomplete="off"
                             >
 
@@ -462,18 +536,24 @@ document
             }
         );
 
-        iniciarScannerQR(
+    iniciarScannerQR(
 
-    async (codigo) => {
+        async (codigo) => {
 
-        await procesarRegistroOperador(
-            tipo,
-            codigo
-        );
+            await procesarRegistroOperador(
+                tipo,
+                codigo
+            );
 
-    }
+        },
 
-);
+        {
+            prefijo:
+                eventoActual.prefijo ||
+                eventoActual.codigo
+        }
+
+    );
 
 }
 
@@ -526,7 +606,8 @@ registroOperadorEnProceso = true;
         const respuesta =
             await registrarServicioAPI(
                 tipo,
-                id
+                id,
+                codigoEventoSeleccionado
             );
 
 

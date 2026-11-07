@@ -2,13 +2,18 @@ function mostrarAsistentes() {
 
     const app = document.getElementById("app");
 
+    const eventoActual =
+        obtenerEventoSeleccionado() || {
+            nombre: "Príncipe de paz"
+        };
+
     app.innerHTML = `
 
         <div class="app">
 
             <header class="app-header solo-logo">
 
-                <p>Sin Cadenas 2026</p>
+                <p>${escaparHTML(eventoActual.nombre)}</p>
 
             </header>
 
@@ -111,8 +116,8 @@ function mostrarFormularioAsistente(asistente = null) {
             (asistente?.evento ||
             codigoEventoSeleccionado)
         ) || {
-            codigo: "SEP26",
-            nombre: "Sin Cadenas 2026",
+            codigo: "NAV26",
+            nombre: "Príncipe de paz",
             costo: 400,
             tipo: "evento"
         };
@@ -428,7 +433,7 @@ function mostrarRegistroExitoso(asistente) {
 
         const evento =
         obtenerEventoDeRegistro(asistente) || {
-            nombre: "Sin Cadenas 2026",
+            nombre: "Príncipe de paz",
             tipo: "evento"
         };
 
@@ -721,8 +726,8 @@ async function enviarHistorialPorWhatsApp(asistente) {
 
     const evento =
         obtenerEventoDeRegistro(asistente) || {
-            codigo: "SEP26",
-            nombre: "Sin Cadenas 2026",
+            codigo: "NAV26",
+            nombre: "Príncipe de paz",
             costo: 400
         };
 
@@ -822,7 +827,7 @@ async function compartirQR(asistente) {
 
         const evento =
         obtenerEventoDeRegistro(asistente) || {
-            nombre: "Sin Cadenas 2026"
+            nombre: "Príncipe de paz"
         };
 
     const texto =
@@ -944,13 +949,20 @@ function mostrarBuscarAsistente() {
 
     const app = document.getElementById("app");
 
+    const eventoActual =
+        obtenerEventoSeleccionado() || {
+            codigo: "NAV26",
+            nombre: "Príncipe de paz",
+            prefijo: "NAV26"
+        };
+
     app.innerHTML = `
 
         <div class="app">
 
             <header class="app-header solo-logo">
 
-                <p>Sin Cadenas 2026</p>
+                <p>${escaparHTML(eventoActual.nombre)}</p>
 
             </header>
 
@@ -984,7 +996,10 @@ function mostrarBuscarAsistente() {
                             <input
                                 id="buscarID"
                                 type="text"
-                                placeholder="Ej. SEP26-0018"
+                                placeholder="Ej. ${escaparHTML(
+                                    eventoActual.prefijo ||
+                                    eventoActual.codigo
+                                )}-0001"
                                 autocomplete="off"
                                 required
                             >
@@ -1079,7 +1094,10 @@ async function ejecutarBusquedaAsistente(evento) {
 
 
         const respuesta =
-            await buscarAsistenteAPI(id);
+            await buscarAsistenteAPI(
+                id,
+                codigoEventoSeleccionado
+            );
 
 
         if (!respuesta.ok) {
@@ -1149,8 +1167,8 @@ function mostrarResultadoAsistente(asistente) {
 
         const evento =
         obtenerEventoDeRegistro(asistente) || {
-            codigo: "SEP26",
-            nombre: "Sin Cadenas 2026",
+            codigo: "NAV26",
+            nombre: "Príncipe de paz",
             costo: 400,
             tipo: "evento"
         };
@@ -1219,9 +1237,6 @@ function mostrarResultadoAsistente(asistente) {
             </div>
 
 
-          ${
-    evento.codigo === "SEP26"
-        ? `
             <div class="estado-asistente">
 
                 <h3>Estado del asistente</h3>
@@ -1233,24 +1248,27 @@ function mostrarResultadoAsistente(asistente) {
                     asistente.horaEntrada
                 )}
 
-                ${crearEstadoServicio(
-                    "🍽️",
-                    "Comida",
-                    asistente.comida,
-                    asistente.horaComida
-                )}
+                ${
+                    evento.codigo === "SEP26"
+                        ? `
+                            ${crearEstadoServicio(
+                                "🍽️",
+                                "Comida",
+                                asistente.comida,
+                                asistente.horaComida
+                            )}
 
-                ${crearEstadoServicio(
-                    "🍿",
-                    "Snack",
-                    asistente.snack,
-                    asistente.horaSnack
-                )}
+                            ${crearEstadoServicio(
+                                "🍿",
+                                "Snack",
+                                asistente.snack,
+                                asistente.horaSnack
+                            )}
+                          `
+                        : ""
+                }
 
             </div>
-          `
-        : ""
-}
 
 
             <div class="pago-asistente">
@@ -1675,7 +1693,9 @@ function mostrarResultadoAsistente(asistente) {
                 "Hola " +
                 asistente.nombre +
                 " 👋\n\n" +
-                "Este es tu registro para Sin Cadenas 2026.\n\n" +
+                "Este es tu registro para " +
+                evento.nombre +
+                ".\n\n" +
                 "🆔 ID: " +
                 asistente.id +
                 "\n\n" +
@@ -1736,7 +1756,10 @@ function mostrarResultadoAsistente(asistente) {
                 try {
 
                     const resultado =
-                        await eliminarAsistenteAPI(asistente.id);
+                        await eliminarAsistenteAPI(
+                            asistente.id,
+                            evento.codigo
+                        );
 
                     if (!resultado.ok) {
                         throw new Error(
@@ -2790,7 +2813,7 @@ function actualizarEncabezadoLista() {
 
     if (nombreEvento) {
         nombreEvento.textContent =
-            evento?.nombre || "Sin Cadenas 2026";
+            evento?.nombre || "Príncipe de paz";
     }
 
     if (titulo) {
@@ -3168,6 +3191,11 @@ function mostrarDetalleDesdeLista(
     const app =
         document.getElementById("app");
 
+    const evento =
+        obtenerEventoDeRegistro(asistente) || {
+            nombre: "Príncipe de paz"
+        };
+
 
     app.innerHTML = `
 
@@ -3175,7 +3203,7 @@ function mostrarDetalleDesdeLista(
 
             <header class="app-header solo-logo">
 
-                <p>Sin Cadenas 2026</p>
+                <p>${escaparHTML(evento.nombre)}</p>
 
             </header>
 

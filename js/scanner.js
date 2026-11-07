@@ -5,7 +5,25 @@ let scannerQRActivo = false;
 let scannerQRProcesando = false;
 
 
-async function iniciarScannerQR(onScan) {
+async function iniciarScannerQR(
+    onScan,
+    opciones = {}
+) {
+
+    const prefijo = String(
+        opciones.prefijo || "NAV26"
+    )
+        .trim()
+        .toUpperCase();
+
+    const prefijoSeguro = prefijo.replace(
+        /[.*+?^${}()|[\]\\]/g,
+        "\\$&"
+    );
+
+    const patronId = new RegExp(
+        "^" + prefijoSeguro + "-\\d{4,}$"
+    );
 
     const contenedor =
         document.getElementById("zonaScanner");
@@ -82,7 +100,7 @@ async function iniciarScannerQR(onScan) {
 
                 // Solo aceptamos nuestros IDs
                 if (
-                    !/^SEP26-\d{4}$/.test(codigo)
+                    !patronId.test(codigo)
                 ) {
 
                     mostrarEstadoScanner(

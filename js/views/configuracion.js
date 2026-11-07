@@ -2,6 +2,20 @@ function mostrarConfiguracion() {
 
     const app = document.getElementById("app");
 
+    const evento =
+        obtenerEventoSeleccionado() || {
+            codigo: "NAV26",
+            nombre: "Príncipe de paz",
+            tipo: "evento"
+        };
+
+    const descripcionOperador =
+        evento.codigo === "SEP26"
+            ? "registrar entrada, comida y snack"
+            : evento.tipo === "evento"
+                ? "registrar la entrada"
+                : "consultar la operación disponible";
+
     app.innerHTML = `
 
         <div class="app">
@@ -10,7 +24,7 @@ function mostrarConfiguracion() {
 
                 <h1>⚙️ Configuración</h1>
 
-                <p>Sin Cadenas 2026</p>
+                <p>${escaparHTML(evento.nombre)}</p>
 
             </header>
 
@@ -63,7 +77,7 @@ function mostrarConfiguracion() {
 
                             <div>
                                 <span>Nombre</span>
-                                <strong>Sin Cadenas 2026</strong>
+                                <strong>${escaparHTML(evento.nombre)}</strong>
                             </div>
 
                             <div>
@@ -117,7 +131,7 @@ function mostrarConfiguracion() {
 
                         <p class="config-descripcion">
                             Cambia esta pantalla al modo utilizado
-                            para registrar entrada, comida y snack.
+                            para ${descripcionOperador}.
                         </p>
 
                         <button

@@ -1,8 +1,10 @@
 let eventosDisponibles = [];
 
+const CODIGO_EVENTO_POR_DEFECTO = "NAV26";
+
 let codigoEventoSeleccionado =
     sessionStorage.getItem("cdoEventoSeleccionado") ||
-    "SEP26";
+    CODIGO_EVENTO_POR_DEFECTO;
 
 
 async function cargarEventosDisponibles() {
@@ -27,7 +29,16 @@ async function cargarEventosDisponibles() {
 
     if (!existeEventoSeleccionado) {
         codigoEventoSeleccionado =
-            eventosDisponibles[0]?.codigo || "SEP26";
+            eventosDisponibles.find(evento =>
+                evento.codigo === CODIGO_EVENTO_POR_DEFECTO
+            )?.codigo ||
+            eventosDisponibles[0]?.codigo ||
+            CODIGO_EVENTO_POR_DEFECTO;
+
+        sessionStorage.setItem(
+            "cdoEventoSeleccionado",
+            codigoEventoSeleccionado
+        );
     }
 
     return eventosDisponibles;

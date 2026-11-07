@@ -28,7 +28,7 @@ async function listarEventosAPI() {
 
 async function registrarAsistenteAPI(
     datos,
-    evento = "SEP26"
+    evento = "NAV26"
 ) {
     return llamarAPI("registrarAsistente", {
         datos: datos,
@@ -49,7 +49,7 @@ async function buscarAsistenteAPI(
 
 
 async function listarAsistentesAPI(
-    evento = "SEP26"
+    evento = "NAV26"
 ) {
     return llamarAPI("listarAsistentes", {
         evento: evento
@@ -163,11 +163,13 @@ async function registrarGanadorCopaAPI(
 
 async function registrarServicioAPI(
     tipo,
-    id
+    id,
+    evento
 ) {
     return llamarAPI("registrarServicio", {
         tipo: tipo,
-        id: id
+        id: id,
+        evento: evento
     });
 }
 
@@ -185,9 +187,13 @@ async function editarAsistenteAPI(
 }
 
 
-async function eliminarAsistenteAPI(id) {
+async function eliminarAsistenteAPI(
+    id,
+    evento
+) {
     return llamarAPI("eliminarAsistente", {
-        id: id
+        id: id,
+        evento: evento
     });
 }
 

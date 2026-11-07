@@ -7,7 +7,7 @@ function mostrarLayout(opciones) {
 
             <header class="app-header">
                 <h1>CDO Eventos</h1>
-                <p>Sin Cadenas 2026</p>
+                <p id="eventoNombreLayout">Príncipe de paz</p>
             </header>
 
             <main class="app-content">

@@ -183,7 +183,7 @@ async function cargarDashboard() {
 
     if (titulo) {
         titulo.textContent =
-            evento?.nombre || "Sin Cadenas 2026";
+            evento?.nombre || "Príncipe de paz";
     }
 
     try {
