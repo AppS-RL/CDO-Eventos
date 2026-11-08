@@ -118,7 +118,7 @@ function mostrarFormularioAsistente(asistente = null) {
         ) || {
             codigo: "NAV26",
             nombre: "Príncipe de paz",
-            costo: 400,
+            costo: 300,
             tipo: "evento"
         };
 
@@ -728,7 +728,7 @@ async function enviarHistorialPorWhatsApp(asistente) {
         obtenerEventoDeRegistro(asistente) || {
             codigo: "NAV26",
             nombre: "Príncipe de paz",
-            costo: 400
+            costo: 300
         };
 
     try {
@@ -1169,7 +1169,7 @@ function mostrarResultadoAsistente(asistente) {
         obtenerEventoDeRegistro(asistente) || {
             codigo: "NAV26",
             nombre: "Príncipe de paz",
-            costo: 400,
+            costo: 300,
             tipo: "evento"
         };
 
