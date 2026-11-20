@@ -21,6 +21,10 @@ Los roles disponibles son `SERVIDOR`, `CAPITAN`, `PASTOR`,
 tener varios roles separados por coma.
 Cuando no existe configuración, se aplica `SERVIDOR`.
 
+En `Mi rol`, pastores, coordinación de roles y administración eligen primero
+el área mediante botones. Los servidores y capitanes entran directamente al
+rol de su propia área, sin selector adicional.
+
 - `SERVIDOR-0001`, Rafael Lopez: servidor, administrador e integrante de Audio.
 - `SERVIDOR-0036`, Emmanuel Gomez: capitán de Audio.
 - `SERVIDOR-0029`, Monica de Ramirez: pastora y coordinadora de roles.

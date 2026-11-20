@@ -1,7 +1,8 @@
 const CLAVE_SESION_SERVIDOR = "cdoSesionServidor";
 let moduloActivoServidor = "";
 let panelGestionActivoServidor = "aprobaciones";
-let mesRolActivoServidor = "";
+let programaRolActivoServidor = "";
+const mesesRolActivosServidor = {};
 
 
 function mostrarAccesoServidor() {
@@ -335,6 +336,14 @@ function mostrarPanelServidor(
     };
     const programasServicio = gestion?.programasServicio || [];
     const programaPrincipal = programasServicio[0] || null;
+    const puedeExplorarRolesPorArea = perfil.roles.some(rol =>
+        ["PASTOR", "COORDINADOR_ROLES", "ADMINISTRADOR"].includes(rol)
+    );
+    const descripcionPrograma = puedeExplorarRolesPorArea && programasServicio.length > 1
+        ? `${programasServicio.length} áreas publicadas`
+        : programaPrincipal
+            ? `${programaPrincipal.area} · Publicado`
+            : "Sin asignar";
     const coberturasPendientes = (gestion?.coberturas || [])
         .filter(item => item.coberturaEstado === "PENDIENTE")
         .length;
@@ -378,7 +387,7 @@ function mostrarPanelServidor(
                 </section>
 
                 <nav class="servidores-modulos" aria-label="Módulos de servidor" data-vista-inicio-servidor>
-                    ${crearAccesoModuloServidor("🎛️", "Mi rol", programaPrincipal ? `${programaPrincipal.area} · Publicado` : "Sin asignar", "rolServicioServidor")}
+                    ${crearAccesoModuloServidor("🎛️", "Mi rol", descripcionPrograma, "rolServicioServidor")}
                     ${crearAccesoModuloServidor("👕", "Uniforme", uniforme ? "Publicado" : "Sin publicar", "uniformeServidor")}
                     ${crearAccesoModuloServidor("✅", "Actividades", actividades.length + " asignada" + (actividades.length === 1 ? "" : "s"), "actividadesServidor")}
                     ${crearAccesoModuloServidor("📖", "Predicaciones", predicaciones.length + " asignada" + (predicaciones.length === 1 ? "" : "s"), "predicacionesServidor")}
@@ -604,12 +613,69 @@ function renderizarRolServicioServidor(programas, perfil) {
         `;
     }
 
-    const programa = programas[0];
+    if (!programas.some(programa => programa.id === programaRolActivoServidor)) {
+        programaRolActivoServidor = programas[0].id;
+    }
+
+    const puedeExplorarAreas = (perfil.roles || []).some(rol =>
+        ["PASTOR", "COORDINADOR_ROLES", "ADMINISTRADOR"].includes(rol)
+    );
+
+    if (!puedeExplorarAreas) {
+        return `
+            <section id="rolServicioServidor" class="servidores-seccion servidores-rol-servicio">
+                ${renderizarDetalleProgramaRolServidor(programas[0], perfil)}
+            </section>
+        `;
+    }
+
+    return `
+        <section id="rolServicioServidor" class="servidores-seccion servidores-rol-servicio">
+            <div class="servidores-seccion-titulo">
+                <span>🎛️</span>
+                <div>
+                    <h2>Mi rol de servicio</h2>
+                    <p>Selecciona el área que deseas consultar</p>
+                </div>
+            </div>
+
+            <nav class="servidores-programas-menu" aria-label="Roles por área">
+                ${programas.map(programa => `
+                    <button
+                        type="button"
+                        data-ir-programa-rol="${escaparHTML(programa.id)}"
+                        class="${programa.id === programaRolActivoServidor ? "activo" : ""}"
+                        aria-pressed="${programa.id === programaRolActivoServidor}"
+                    >
+                        <span>🎛️</span>
+                        <strong>${escaparHTML(programa.area)}</strong>
+                        <small>${escaparHTML(formatearPeriodoRolServidor(programa.periodoInicio, programa.periodoFin))}</small>
+                    </button>
+                `).join("")}
+            </nav>
+
+            ${programas.map(programa => `
+                <div
+                    class="servidores-programa-panel"
+                    data-programa-rol-panel="${escaparHTML(programa.id)}"
+                    ${programa.id === programaRolActivoServidor ? "" : "hidden"}
+                >
+                    ${renderizarDetalleProgramaRolServidor(programa, perfil)}
+                </div>
+            `).join("")}
+        </section>
+    `;
+}
+
+
+function renderizarDetalleProgramaRolServidor(programa, perfil) {
     const meses = [...new Set((programa.actividades || []).map(item => item.mes))];
     const mesActual = new Date().toISOString().slice(0, 7);
+    let mesActivo = mesesRolActivosServidor[programa.id];
 
-    if (!meses.includes(mesRolActivoServidor)) {
-        mesRolActivoServidor = meses.includes(mesActual) ? mesActual : meses[0];
+    if (!meses.includes(mesActivo)) {
+        mesActivo = meses.includes(mesActual) ? mesActual : meses[0];
+        mesesRolActivosServidor[programa.id] = mesActivo;
     }
 
     const equipo = (programa.equipo || []).map(persona => {
@@ -618,7 +684,7 @@ function renderizarRolServicioServidor(programas, perfil) {
     }).join("");
 
     return `
-        <section id="rolServicioServidor" class="servidores-seccion servidores-rol-servicio">
+        <div class="servidores-programa-detalle">
             <div class="servidores-seccion-titulo">
                 <span>🎛️</span>
                 <div>
@@ -640,11 +706,11 @@ function renderizarRolServicioServidor(programas, perfil) {
                 <div>${equipo || `<span>${escaparHTML(perfil.area || programa.area)}</span>`}</div>
             </div>
 
-            <label class="servidores-selector-mes" for="mesRolServidor">
+            <label class="servidores-selector-mes">
                 Ver asignaciones de
-                <select id="mesRolServidor">
+                <select data-selector-mes-rol="${escaparHTML(programa.id)}">
                     ${meses.map(mes => `
-                        <option value="${escaparHTML(mes)}" ${mes === mesRolActivoServidor ? "selected" : ""}>
+                        <option value="${escaparHTML(mes)}" ${mes === mesActivo ? "selected" : ""}>
                             ${escaparHTML(nombreMesRolServidor(mes))}
                         </option>
                     `).join("")}
@@ -652,7 +718,7 @@ function renderizarRolServicioServidor(programas, perfil) {
             </label>
 
             ${meses.map(mes => `
-                <div class="servidores-cronograma" data-rol-mes="${escaparHTML(mes)}" ${mes === mesRolActivoServidor ? "" : "hidden"}>
+                <div class="servidores-cronograma" data-programa-mes="${escaparHTML(programa.id)}" data-rol-mes="${escaparHTML(mes)}" ${mes === mesActivo ? "" : "hidden"}>
                     ${(programa.actividades || [])
                         .filter(actividad => actividad.mes === mes)
                         .map(renderizarActividadRolServicioServidor)
@@ -663,7 +729,7 @@ function renderizarRolServicioServidor(programas, perfil) {
             <p class="servidores-rol-nota">
                 Este rol sólo puede ser modificado por la coordinación. Una cobertura autorizada cambia quién realiza la actividad ese día, pero conserva la asignación original.
             </p>
-        </section>
+        </div>
     `;
 }
 
@@ -678,8 +744,8 @@ function renderizarActividadRolServicioServidor(actividad) {
         : actividad.tipoAsignacion === "EQUIPO"
             ? `Equipo: ${responsables}`
             : responsables;
-    const destacada = actividad.meCorresponde || actividad.superviso;
-    const etiquetaPropia = actividad.superviso
+    const destacada = actividad.meCorresponde || actividad.supervisor;
+    const etiquetaPropia = actividad.supervisor
         ? "Supervisas"
         : actividad.meCorresponde
             ? "Te corresponde"
@@ -700,10 +766,32 @@ function renderizarActividadRolServicioServidor(actividad) {
 
 
 function configurarSelectorRolServicioServidor() {
-    document.getElementById("mesRolServidor")?.addEventListener("change", evento => {
-        mesRolActivoServidor = evento.currentTarget.value;
-        document.querySelectorAll("[data-rol-mes]").forEach(panel => {
-            panel.hidden = panel.dataset.rolMes !== mesRolActivoServidor;
+    document.querySelectorAll("[data-ir-programa-rol]").forEach(boton => {
+        boton.addEventListener("click", () => {
+            programaRolActivoServidor = boton.dataset.irProgramaRol;
+
+            document.querySelectorAll("[data-ir-programa-rol]").forEach(opcion => {
+                const activo = opcion.dataset.irProgramaRol === programaRolActivoServidor;
+                opcion.classList.toggle("activo", activo);
+                opcion.setAttribute("aria-pressed", String(activo));
+            });
+
+            document.querySelectorAll("[data-programa-rol-panel]").forEach(panel => {
+                panel.hidden = panel.dataset.programaRolPanel !== programaRolActivoServidor;
+            });
+        });
+    });
+
+    document.querySelectorAll("[data-selector-mes-rol]").forEach(selector => {
+        selector.addEventListener("change", evento => {
+            const programaId = evento.currentTarget.dataset.selectorMesRol;
+            mesesRolActivosServidor[programaId] = evento.currentTarget.value;
+
+            document.querySelectorAll("[data-programa-mes]").forEach(panel => {
+                if (panel.dataset.programaMes === programaId) {
+                    panel.hidden = panel.dataset.rolMes !== mesesRolActivosServidor[programaId];
+                }
+            });
         });
     });
 }
