@@ -1,5 +1,7 @@
 const SERVIDORES_EVENTO = "SERVIDORES";
 const SERVIDORES_HOJA_ACCESOS = "AccesosServidores";
+const SERVIDORES_HOJA_CONTENIDO = "ContenidoServidores";
+const SERVIDORES_HOJA_PROGRESO = "ProgresoServidores";
 const SERVIDORES_MAX_INTENTOS = 5;
 const SERVIDORES_BLOQUEO_MINUTOS = 15;
 const SERVIDORES_SESION_DIAS = 30;
@@ -104,32 +106,15 @@ function iniciarSesionServidor(id, pin) {
 
 
 function validarSesionServidor(token) {
-  const tokenLimpio = String(token || "").trim();
+  const sesion = resolverSesionServidor_(token);
 
-  if (!tokenLimpio) {
-    return { ok: false, mensaje: "Sesión no válida." };
-  }
-
-  const hoja = obtenerHojaAccesosServidores_();
-  const acceso = buscarSesionServidor_(hoja, hashServidor_(tokenLimpio));
-
-  if (
-    !acceso ||
-    !acceso.sesionExpira ||
-    acceso.sesionExpira.getTime() <= Date.now()
-  ) {
+  if (!sesion) {
     return { ok: false, mensaje: "La sesión terminó." };
-  }
-
-  const identidad = obtenerIdentidadServidor_(acceso.id);
-
-  if (!identidad) {
-    return { ok: false, mensaje: "La cuenta ya no está disponible." };
   }
 
   return {
     ok: true,
-    servidor: identidadPublicaServidor_(identidad)
+    servidor: identidadPublicaServidor_(sesion.identidad)
   };
 }
 
@@ -147,6 +132,398 @@ function cerrarSesionServidor(token) {
   }
 
   return { ok: true };
+}
+
+
+function prepararModuloContenidoServidores() {
+  obtenerHojaContenidoServidores_();
+  obtenerHojaProgresoServidores_();
+
+  return {
+    ok: true,
+    mensaje: "Las hojas de contenido y progreso están listas."
+  };
+}
+
+
+function cargarRolUniformes2026() {
+  const hoja = obtenerHojaContenidoServidores_();
+  const publicados = new Date();
+  const uniformes = [
+    ["2026-10-03", "NEGRO", "POLO"],
+    ["2026-10-10", "AZUL", "PLAYERA"],
+    ["2026-10-17", "NEGRO", "PLAYERA"],
+    ["2026-10-24", "VERDE LIMA", "PLAYERA"],
+    ["2026-10-31", "GRIS", "PLAYERA"],
+    ["2026-11-07", "MORADO", "PLAYERA"],
+    ["2026-11-14", "AZUL", "PLAYERA"],
+    ["2026-11-21", "NEGRO", "PLAYERA"],
+    ["2026-11-28", "VERDE LIMA", "PLAYERA"],
+    ["2026-12-05", "GRIS", "PLAYERA"],
+    ["2026-12-12", "MORADO", "PLAYERA"],
+    ["2026-12-19", "AZUL", "PLAYERA"],
+    ["2026-12-26", "GRIS", "PLAYERA"]
+  ];
+  const filasPorId = {};
+
+  if (hoja.getLastRow() >= 2) {
+    hoja
+      .getRange(2, 1, hoja.getLastRow() - 1, 1)
+      .getValues()
+      .forEach(function(fila, indice) {
+        const id = String(fila[0] || "").trim().toUpperCase();
+
+        if (id) {
+          filasPorId[id] = indice + 2;
+        }
+      });
+  }
+
+  uniformes.forEach(function(item) {
+    const fecha = item[0];
+    const color = item[1];
+    const prenda = item[2];
+    const id = "UNIFORME-" + fecha;
+    const esPolo = prenda === "POLO";
+    const fila = [
+      id,
+      "UNIFORME",
+      (esPolo ? "Camisa tipo polo " : "Playera ") + nombreColorPrendaServidor_(color),
+      esPolo
+        ? "Camisa tipo polo con el distintivo de Iglesia Juvenil."
+        : "Playera con el distintivo de Iglesia Juvenil.",
+      fecha,
+      "",
+      "TODOS",
+      "SI",
+      publicados,
+      color,
+      prenda
+    ];
+    const numeroFila = filasPorId[id] || hoja.getLastRow() + 1;
+
+    hoja.getRange(numeroFila, 1, 1, fila.length).setValues([fila]);
+    filasPorId[id] = numeroFila;
+  });
+
+  return {
+    ok: true,
+    total: uniformes.length,
+    mensaje: "El rol de uniformes 2026 quedó cargado."
+  };
+}
+
+
+function nombreColorPrendaServidor_(color) {
+  const nombres = {
+    "NEGRO": "negra",
+    "AZUL": "azul cielo",
+    "VERDE LIMA": "verde lima",
+    "GRIS": "gris",
+    "MORADO": "morada"
+  };
+
+  return nombres[color] || String(color || "").toLowerCase();
+}
+
+
+function obtenerContenidoServidor(token) {
+  const sesion = resolverSesionServidor_(token);
+
+  if (!sesion) {
+    return { ok: false, mensaje: "La sesión terminó." };
+  }
+
+  const contenidos = listarContenidoServidor_(sesion.identidad.id);
+  const progreso = obtenerProgresoServidor_(sesion.identidad.id);
+
+  return {
+    ok: true,
+    contenidos: contenidos.map(function(contenido) {
+      return {
+        id: contenido.id,
+        tipo: contenido.tipo,
+        titulo: contenido.titulo,
+        descripcion: contenido.descripcion,
+        fecha: contenido.fecha,
+        enlace: contenido.enlace,
+        color: contenido.color,
+        prenda: contenido.prenda,
+        completada: Boolean(progreso[contenido.id])
+      };
+    })
+  };
+}
+
+
+function marcarActividadServidor(token, contenidoId, completada) {
+  const sesion = resolverSesionServidor_(token);
+
+  if (!sesion) {
+    return { ok: false, mensaje: "La sesión terminó." };
+  }
+
+  const idContenido = String(contenidoId || "").trim().toUpperCase();
+  const contenido = listarContenidoServidor_(sesion.identidad.id)
+    .find(function(item) {
+      return item.id === idContenido;
+    });
+
+  if (
+    !contenido ||
+    ["ACTIVIDAD", "PREDICACION"].indexOf(contenido.tipo) === -1
+  ) {
+    return {
+      ok: false,
+      mensaje: "La actividad no está disponible."
+    };
+  }
+
+  const hoja = obtenerHojaProgresoServidores_();
+  const bloqueo = LockService.getScriptLock();
+  bloqueo.waitLock(10000);
+
+  try {
+    const fila = buscarFilaProgresoServidor_(
+      hoja,
+      sesion.identidad.id,
+      idContenido
+    );
+    const valores = [[
+      sesion.identidad.id,
+      idContenido,
+      Boolean(completada),
+      new Date()
+    ]];
+
+    if (fila) {
+      hoja.getRange(fila, 1, 1, 4).setValues(valores);
+    } else {
+      hoja.appendRow(valores[0]);
+    }
+  } finally {
+    bloqueo.releaseLock();
+  }
+
+  return {
+    ok: true,
+    contenidoId: idContenido,
+    completada: Boolean(completada)
+  };
+}
+
+
+function resolverSesionServidor_(token) {
+  const tokenLimpio = String(token || "").trim();
+
+  if (!tokenLimpio) {
+    return null;
+  }
+
+  const hoja = obtenerHojaAccesosServidores_();
+  const acceso = buscarSesionServidor_(hoja, hashServidor_(tokenLimpio));
+
+  if (
+    !acceso ||
+    !acceso.sesionExpira ||
+    acceso.sesionExpira.getTime() <= Date.now()
+  ) {
+    return null;
+  }
+
+  const identidad = obtenerIdentidadServidor_(acceso.id);
+
+  return identidad ? { acceso: acceso, identidad: identidad } : null;
+}
+
+
+function obtenerHojaContenidoServidores_() {
+  const libro = SpreadsheetApp.getActiveSpreadsheet();
+  let hoja = libro.getSheetByName(SERVIDORES_HOJA_CONTENIDO);
+  const encabezados = [
+    "ID",
+    "TIPO",
+    "TITULO",
+    "DESCRIPCION",
+    "FECHA",
+    "ENLACE",
+    "DESTINATARIO",
+    "ACTIVO",
+    "PUBLICADO",
+    "COLOR",
+    "PRENDA"
+  ];
+
+  if (!hoja) {
+    hoja = libro.insertSheet(SERVIDORES_HOJA_CONTENIDO);
+    hoja.appendRow(encabezados);
+    hoja.setFrozenRows(1);
+  } else {
+    hoja.getRange(1, 1, 1, encabezados.length).setValues([encabezados]);
+  }
+
+  return hoja;
+}
+
+
+function obtenerHojaProgresoServidores_() {
+  const libro = SpreadsheetApp.getActiveSpreadsheet();
+  let hoja = libro.getSheetByName(SERVIDORES_HOJA_PROGRESO);
+
+  if (!hoja) {
+    hoja = libro.insertSheet(SERVIDORES_HOJA_PROGRESO);
+    hoja.appendRow([
+      "SERVIDOR_ID",
+      "CONTENIDO_ID",
+      "COMPLETADA",
+      "ACTUALIZADO"
+    ]);
+    hoja.setFrozenRows(1);
+  }
+
+  return hoja;
+}
+
+
+function listarContenidoServidor_(servidorId) {
+  const hoja = obtenerHojaContenidoServidores_();
+
+  if (hoja.getLastRow() < 2) {
+    return [];
+  }
+
+  return hoja
+    .getRange(2, 1, hoja.getLastRow() - 1, 11)
+    .getValues()
+    .map(function(fila) {
+      return {
+        id: String(fila[0] || "").trim().toUpperCase(),
+        tipo: normalizarTipoContenidoServidor_(fila[1]),
+        titulo: String(fila[2] || "").trim(),
+        descripcion: String(fila[3] || "").trim(),
+        fecha: formatearFechaContenidoServidor_(fila[4]),
+        enlace: normalizarEnlaceContenidoServidor_(fila[5]),
+        destinatario: String(fila[6] || "TODOS").trim().toUpperCase(),
+        activo: valorActivoServidor_(fila[7]),
+        publicado: fila[8],
+        color: String(fila[9] || "").trim().toUpperCase(),
+        prenda: String(fila[10] || "").trim().toUpperCase()
+      };
+    })
+    .filter(function(item) {
+      return Boolean(
+        item.id &&
+        item.tipo &&
+        item.titulo &&
+        item.activo &&
+        destinatarioIncluyeServidor_(item.destinatario, servidorId)
+      );
+    })
+    .sort(function(a, b) {
+      return String(a.fecha || "9999-12-31")
+        .localeCompare(String(b.fecha || "9999-12-31"));
+    });
+}
+
+
+function obtenerProgresoServidor_(servidorId) {
+  const hoja = obtenerHojaProgresoServidores_();
+  const progreso = {};
+
+  if (hoja.getLastRow() < 2) {
+    return progreso;
+  }
+
+  hoja
+    .getRange(2, 1, hoja.getLastRow() - 1, 3)
+    .getValues()
+    .forEach(function(fila) {
+      if (normalizarIdServidor_(fila[0]) === servidorId) {
+        progreso[String(fila[1] || "").trim().toUpperCase()] =
+          valorActivoServidor_(fila[2]);
+      }
+    });
+
+  return progreso;
+}
+
+
+function buscarFilaProgresoServidor_(hoja, servidorId, contenidoId) {
+  if (hoja.getLastRow() < 2) {
+    return 0;
+  }
+
+  const filas = hoja
+    .getRange(2, 1, hoja.getLastRow() - 1, 2)
+    .getDisplayValues();
+
+  for (let indice = 0; indice < filas.length; indice += 1) {
+    if (
+      normalizarIdServidor_(filas[indice][0]) === servidorId &&
+      String(filas[indice][1]).trim().toUpperCase() === contenidoId
+    ) {
+      return indice + 2;
+    }
+  }
+
+  return 0;
+}
+
+
+function normalizarTipoContenidoServidor_(tipo) {
+  const valor = String(tipo || "")
+    .trim()
+    .toUpperCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+
+  return ["UNIFORME", "ACTIVIDAD", "PREDICACION", "AVISO"]
+    .indexOf(valor) >= 0
+    ? valor
+    : "";
+}
+
+
+function destinatarioIncluyeServidor_(destinatario, servidorId) {
+  const destinos = String(destinatario || "TODOS")
+    .split(",")
+    .map(function(valor) {
+      return valor.trim().toUpperCase();
+    });
+
+  return destinos.indexOf("TODOS") >= 0 ||
+    destinos.indexOf("*") >= 0 ||
+    destinos.indexOf(servidorId) >= 0;
+}
+
+
+function valorActivoServidor_(valor) {
+  if (valor === true || valor === 1) {
+    return true;
+  }
+
+  return ["SI", "SÍ", "TRUE", "1", "ACTIVO", "COMPLETADA"]
+    .indexOf(String(valor || "").trim().toUpperCase()) >= 0;
+}
+
+
+function formatearFechaContenidoServidor_(valor) {
+  if (valor instanceof Date && !isNaN(valor.getTime())) {
+    return Utilities.formatDate(
+      valor,
+      Session.getScriptTimeZone(),
+      "yyyy-MM-dd"
+    );
+  }
+
+  const texto = String(valor || "").trim();
+  return /^\d{4}-\d{2}-\d{2}$/.test(texto) ? texto : "";
+}
+
+
+function normalizarEnlaceContenidoServidor_(valor) {
+  const enlace = String(valor || "").trim();
+  return /^https:\/\//i.test(enlace) ? enlace : "";
 }
 
 

@@ -232,3 +232,103 @@ async function cerrarSesionServidorAPI(token) {
     });
 }
 
+
+async function obtenerContenidoServidorAPI(token) {
+    return llamarAPI("obtenerContenidoServidor", {
+        token: token
+    });
+}
+
+
+async function marcarActividadServidorAPI(
+    token,
+    contenidoId,
+    completada
+) {
+    return llamarAPI("marcarActividadServidor", {
+        token: token,
+        contenidoId: contenidoId,
+        completada: completada
+    });
+}
+
+
+async function obtenerGestionServidorAPI(token) {
+    return llamarAPI("obtenerGestionServidor", {
+        token: token
+    });
+}
+
+
+async function solicitarPermisoServidorAPI(token, datos) {
+    return llamarAPI("solicitarPermisoServidor", {
+        token: token,
+        datos: datos
+    });
+}
+
+
+async function responderCoberturaServidorAPI(
+    token,
+    permisoId,
+    respuesta
+) {
+    return llamarAPI("responderCoberturaServidor", {
+        token: token,
+        permisoId: permisoId,
+        respuesta: respuesta
+    });
+}
+
+
+async function resolverPermisoServidorAPI(
+    token,
+    permisoId,
+    decision,
+    aprobador
+) {
+    return llamarAPI("resolverPermisoServidor", {
+        token: token,
+        permisoId: permisoId,
+        decision: decision,
+        aprobador: aprobador
+    });
+}
+
+
+async function cancelarPermisoServidorAPI(token, permisoId) {
+    return llamarAPI("cancelarPermisoServidor", {
+        token: token,
+        permisoId: permisoId
+    });
+}
+
+
+async function guardarListaAsistenciaServidorAPI(
+    token,
+    servicioId,
+    registros
+) {
+    return llamarAPI("guardarListaAsistenciaServidor", {
+        token: token,
+        servicioId: servicioId,
+        registros: registros
+    });
+}
+
+
+async function publicarAvisoAreaServidorAPI(token, datos) {
+    return llamarAPI("publicarAvisoAreaServidor", {
+        token: token,
+        datos: datos
+    });
+}
+
+
+async function actualizarOrganizacionServidorAPI(token, datos) {
+    return llamarAPI("actualizarOrganizacionServidor", {
+        token: token,
+        datos: datos
+    });
+}
+
