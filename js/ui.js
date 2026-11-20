@@ -14,6 +14,10 @@ function cargarVista(nombre){
             mostrarOperador();
             break;
 
+        case "servidores":
+            mostrarAccesoServidor();
+            break;
+
     }
 
 }

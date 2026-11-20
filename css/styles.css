@@ -114,6 +114,191 @@ h1{
     color: #b91c1c;
 }
 
+.boton-servidor {
+    background: #e0f2fe;
+    color: #075985;
+}
+
+/* ===========================
+   CDO SERVIDORES
+=========================== */
+
+.servidores-acceso {
+    min-height: 100vh;
+    display: grid;
+    place-items: center;
+    padding: 20px;
+    background:
+        radial-gradient(circle at top, #dbeafe 0, transparent 45%),
+        var(--gris);
+}
+
+.servidores-acceso-card {
+    width: 100%;
+    max-width: 440px;
+    padding: 28px;
+    background: var(--blanco);
+    border-radius: 24px;
+    box-shadow: 0 18px 50px rgba(15, 23, 42, .12);
+}
+
+.servidores-volver,
+.servidores-enlace {
+    border: 0;
+    background: transparent;
+    color: #1d4ed8;
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.servidores-identidad {
+    margin: 18px 0 28px;
+    text-align: center;
+}
+
+.servidores-identidad h1 {
+    margin: 8px 0 4px;
+}
+
+.servidores-identidad p {
+    color: #64748b;
+}
+
+.servidores-icono {
+    display: inline-grid;
+    width: 64px;
+    height: 64px;
+    place-items: center;
+    border-radius: 20px;
+    background: #dbeafe;
+    font-size: 30px;
+}
+
+.servidores-acceso-card .boton {
+    margin: 4px 0 0;
+}
+
+.servidores-enlace {
+    display: block;
+    margin: 20px auto 0;
+}
+
+.servidores-mensaje {
+    min-height: 24px;
+    color: #166534;
+    font-size: 14px;
+}
+
+.servidores-mensaje.es-error {
+    color: #b91c1c;
+}
+
+.servidores-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 18px;
+    padding: 24px 20px;
+    background: linear-gradient(135deg, #0f3d82, #2563eb);
+    color: var(--blanco);
+}
+
+.servidores-header span,
+.servidores-header p {
+    opacity: .85;
+}
+
+.servidores-header h1 {
+    margin: 4px 0;
+    text-align: left;
+    font-size: clamp(22px, 6vw, 30px);
+}
+
+.servidores-header button {
+    padding: 10px 14px;
+    border: 1px solid rgba(255, 255, 255, .55);
+    border-radius: 12px;
+    background: rgba(255, 255, 255, .12);
+    color: var(--blanco);
+    font: inherit;
+    cursor: pointer;
+}
+
+.servidores-panel {
+    width: 100%;
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 22px 18px 40px;
+}
+
+.servidores-resumen {
+    padding: 22px;
+    border-radius: 20px;
+    background: var(--blanco);
+    box-shadow: 0 10px 30px rgba(15, 23, 42, .07);
+}
+
+.servidores-resumen strong {
+    display: block;
+    margin-bottom: 4px;
+    font-size: 20px;
+}
+
+.servidores-resumen p,
+.servidores-modulo small {
+    color: #64748b;
+}
+
+.servidores-modulos {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+    margin-top: 18px;
+}
+
+.servidores-modulo {
+    position: relative;
+    display: flex;
+    min-height: 155px;
+    flex-direction: column;
+    gap: 5px;
+    padding: 20px;
+    border-radius: 18px;
+    background: var(--blanco);
+    box-shadow: 0 8px 24px rgba(15, 23, 42, .06);
+}
+
+.servidores-modulo > span {
+    margin-bottom: 6px;
+    font-size: 30px;
+}
+
+.servidores-modulo em {
+    margin-top: auto;
+    color: #2563eb;
+    font-size: 12px;
+    font-style: normal;
+    font-weight: 600;
+}
+
+.servidores-siguiente-etapa {
+    margin-top: 22px;
+    color: #64748b;
+    text-align: center;
+    font-size: 13px;
+}
+
+@media (max-width: 520px) {
+    .servidores-acceso-card {
+        padding: 22px;
+    }
+
+    .servidores-modulos {
+        grid-template-columns: 1fr;
+    }
+}
+
 footer{
 
     margin-top:25px;

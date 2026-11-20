@@ -21,6 +21,10 @@ function mostrarInicio() {
                     👷 Operador
                 </button>
 
+                <button id="btnServidor" class="boton boton-servidor">
+                    🙋 Soy servidor
+                </button>
+
                 <footer>
                     Versión 2.0
                 </footer>
@@ -48,6 +52,14 @@ document
         .addEventListener("click", () => {
 
             cargarVista("operador");
+
+        });
+
+    document
+        .getElementById("btnServidor")
+        .addEventListener("click", () => {
+
+            cargarVista("servidores");
 
         });
 

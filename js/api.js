@@ -197,3 +197,38 @@ async function eliminarAsistenteAPI(
     });
 }
 
+
+async function activarAccesoServidorAPI(
+    id,
+    ultimosTelefono,
+    pin
+) {
+    return llamarAPI("activarAccesoServidor", {
+        id: id,
+        ultimosTelefono: ultimosTelefono,
+        pin: pin
+    });
+}
+
+
+async function iniciarSesionServidorAPI(id, pin) {
+    return llamarAPI("iniciarSesionServidor", {
+        id: id,
+        pin: pin
+    });
+}
+
+
+async function validarSesionServidorAPI(token) {
+    return llamarAPI("validarSesionServidor", {
+        token: token
+    });
+}
+
+
+async function cerrarSesionServidorAPI(token) {
+    return llamarAPI("cerrarSesionServidor", {
+        token: token
+    });
+}
+
