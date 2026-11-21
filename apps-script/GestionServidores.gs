@@ -633,8 +633,8 @@ function listarNotificacionesGestionServidor_(
   const leidas = listarNotificacionesLeidasServidor_(servidorId);
   const notificaciones = [];
   const esCapitan = tieneRolGestionServidor_(perfil, "CAPITAN");
-  const puedeVerSolicitudes = tieneRolGestionServidor_(perfil, "PASTOR") ||
-    tieneRolGestionServidor_(perfil, "ADMINISTRADOR");
+  const puedeVerSolicitudes = servidorId === GESTION_PASTOR_APROBADOR_ID &&
+    tieneRolGestionServidor_(perfil, "APROBADOR_PERMISOS");
 
   permisos.forEach(function(permiso) {
     const solicitante = personasPorId[permiso.servidorId];
