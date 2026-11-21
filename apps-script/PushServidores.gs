@@ -209,7 +209,12 @@ function obtenerTokenAccesoFCM_() {
 
   const propiedades = PropertiesService.getScriptProperties();
   const correo = propiedades.getProperty("FCM_CLIENT_EMAIL");
-  const llave = String(propiedades.getProperty("FCM_PRIVATE_KEY") || "").replace(/\\n/g, "\n");
+  const llave = String(propiedades.getProperty("FCM_PRIVATE_KEY") || "")
+    .replace(/^['"]|['"]$/g, "")
+    .replace(/\\n/g, "\n")
+    .replace(/-----BEGIN PRIVATE KEY-----\s*/, "-----BEGIN PRIVATE KEY-----\n")
+    .replace(/\s*-----END PRIVATE KEY-----/, "\n-----END PRIVATE KEY-----")
+    .trim();
   if (!correo || !llave) throw new Error("Faltan las credenciales privadas de Firebase.");
 
   const ahora = Math.floor(Date.now() / 1000);
