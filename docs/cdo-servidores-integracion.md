@@ -21,9 +21,21 @@ case "validarSesionServidor":
 
 case "cerrarSesionServidor":
   return cerrarSesionServidor(datos.token);
+
+case "obtenerGestionServidor":
+  return obtenerGestionServidor(datos.token);
+
+case "marcarNotificacionesServidor":
+  return marcarNotificacionesServidor(
+    datos.token,
+    datos.notificacionIds
+  );
 ```
 
 Después se debe crear una nueva versión del despliegue web de Apps Script. La
 primera activación válida crea automáticamente la hoja `AccesosServidores`.
 Esta hoja guarda hashes del PIN y de la sesión; no guarda el PIN ni el token en
 texto legible.
+La primera consulta de gestión también crea `NotificacionesLeidasServidores`,
+que sólo conserva el usuario, el identificador de la notificación y la fecha de
+lectura.

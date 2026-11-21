@@ -4,6 +4,7 @@ const GESTION_HOJA_PERMISOS = "PermisosServidores";
 const GESTION_HOJA_ASISTENCIA = "AsistenciaServidores";
 const GESTION_HOJA_PROGRAMAS = "ProgramasAreaServidores";
 const GESTION_HOJA_ACTIVIDADES_AREA = "ActividadesAreaServidores";
+const GESTION_HOJA_NOTIFICACIONES_LEIDAS = "NotificacionesLeidasServidores";
 const GESTION_LIMITE_PERMISOS = 6;
 const GESTION_DIAS_PERMISO = 15;
 const GESTION_PASTOR_APROBADOR_ID = "SERVIDOR-1000";
@@ -16,6 +17,7 @@ function prepararGestionServidores() {
   obtenerHojaAsistenciaServidores_();
   obtenerHojaProgramasAreaServidores_();
   obtenerHojaActividadesAreaServidores_();
+  obtenerHojaNotificacionesLeidasServidores_();
   sincronizarServiciosUniformes_();
   asegurarAdministradorServidor_("SERVIDOR-0001");
   configurarResponsablesMinisterio2026_();
@@ -43,6 +45,13 @@ function obtenerGestionServidor(token) {
   const permisos = listarPermisosServidores_();
   const servicios = listarServiciosServidores_();
   const asistencias = listarAsistenciasServidores_();
+  const notificaciones = listarNotificacionesGestionServidor_(
+    servidorId,
+    perfil,
+    permisos,
+    personasPorId,
+    perfilesPorId
+  );
   const programasServicio = listarProgramasAreaServidor_(
     servidorId,
     perfil,
@@ -91,6 +100,7 @@ function obtenerGestionServidor(token) {
   return {
     ok: true,
     perfil: serializarPerfilGestionServidor_(perfil, asistencias, permisos),
+    notificaciones: notificaciones,
     programasServicio: programasServicio,
     servicios: servicios,
     permisos: permisosPropios.map(function(permiso) {
@@ -130,6 +140,88 @@ function obtenerGestionServidor(token) {
         return persona.id === asistencia.servidorId;
       });
     })
+  };
+}
+
+
+function marcarNotificacionesServidor(token, notificacionIds) {
+  const sesion = resolverSesionServidor_(token);
+
+  if (!sesion) {
+    return { ok: false, mensaje: "La sesión terminó." };
+  }
+
+  const servidorId = sesion.identidad.id;
+  const perfil = obtenerPerfilGestionServidor_(servidorId);
+  const personas = listarPersonasGestionServidor_();
+  const personasPorId = indexarPersonasGestionServidor_(personas);
+  const perfilesPorId = indexarPerfilesGestionServidor_(personas);
+  const disponibles = listarNotificacionesGestionServidor_(
+    servidorId,
+    perfil,
+    listarPermisosServidores_(),
+    personasPorId,
+    perfilesPorId
+  );
+  const permitidas = {};
+  disponibles.forEach(function(notificacion) {
+    permitidas[notificacion.id] = true;
+  });
+  listarContenidoServidor_(servidorId)
+    .filter(function(contenido) {
+      return ["AVISO", "PREDICACION"].indexOf(contenido.tipo) >= 0;
+    })
+    .forEach(function(contenido) {
+      permitidas[contenido.tipo + "_" + contenido.id] = true;
+    });
+
+  const ids = (Array.isArray(notificacionIds) ? notificacionIds : [notificacionIds])
+    .map(function(id) {
+      return String(id || "").trim().toUpperCase();
+    })
+    .filter(function(id, indice, todos) {
+      return Boolean(id && permitidas[id] && todos.indexOf(id) === indice);
+    });
+
+  if (!ids.length) {
+    return { ok: true, total: 0, mensaje: "No había notificaciones nuevas." };
+  }
+
+  const hoja = obtenerHojaNotificacionesLeidasServidores_();
+  const filas = {};
+
+  if (hoja.getLastRow() >= 2) {
+    hoja.getRange(2, 1, hoja.getLastRow() - 1, 2)
+      .getDisplayValues()
+      .forEach(function(fila, indice) {
+        filas[normalizarIdServidor_(fila[0]) + "|" + String(fila[1] || "").trim().toUpperCase()] = indice + 2;
+      });
+  }
+
+  const bloqueo = LockService.getScriptLock();
+  bloqueo.waitLock(10000);
+
+  try {
+    ids.forEach(function(id) {
+      const llave = servidorId + "|" + id;
+      const valores = [[servidorId, id, new Date()]];
+
+      if (filas[llave]) {
+        hoja.getRange(filas[llave], 1, 1, 3).setValues(valores);
+      } else {
+        hoja.appendRow(valores[0]);
+      }
+    });
+  } finally {
+    bloqueo.releaseLock();
+  }
+
+  return {
+    ok: true,
+    total: ids.length,
+    mensaje: ids.length === 1
+      ? "Notificación marcada como leída."
+      : "Notificaciones marcadas como leídas."
   };
 }
 
@@ -509,6 +601,124 @@ function publicarAvisoAreaServidor(token, datos) {
 }
 
 
+function listarNotificacionesGestionServidor_(
+  servidorId,
+  perfil,
+  permisos,
+  personasPorId,
+  perfilesPorId
+) {
+  const leidas = listarNotificacionesLeidasServidor_(servidorId);
+  const notificaciones = [];
+  const esCapitan = tieneRolGestionServidor_(perfil, "CAPITAN");
+  const puedeVerSolicitudes = tieneRolGestionServidor_(perfil, "PASTOR") ||
+    tieneRolGestionServidor_(perfil, "ADMINISTRADOR");
+
+  permisos.forEach(function(permiso) {
+    const solicitante = personasPorId[permiso.servidorId];
+    const perfilSolicitante = perfilesPorId[permiso.servidorId];
+    const perteneceAlEquipo = esCapitan && perfilSolicitante &&
+      perteneceAlEquipoGestionServidor_(permiso.servidorId, perfil, perfilSolicitante);
+    const solicitudActiva = ["CANCELADO", "RECHAZADO"].indexOf(permiso.estado) < 0;
+    const debeRevisar = solicitudActiva &&
+      (puedeVerSolicitudes || perteneceAlEquipo) &&
+      (
+        (perteneceAlEquipo && permiso.capitanEstado === "PENDIENTE") ||
+        (puedeVerSolicitudes && permiso.pastorEstado === "PENDIENTE")
+      );
+
+    if (debeRevisar) {
+      agregarNotificacionGestionServidor_(notificaciones, leidas, {
+        id: "PERMISO_REVISION_" + permiso.id,
+        tipo: "PERMISO",
+        titulo: "Nueva solicitud de permiso",
+        descripcion: (solicitante ? solicitante.nombre : permiso.servidorId) +
+          " solicita permiso para el " + permiso.fechaServicio + ".",
+        fecha: permiso.creado,
+        destino: "gestionEquipoServidor"
+      });
+    }
+
+    if (solicitudActiva &&
+        permiso.reemplazoId === servidorId &&
+        permiso.coberturaEstado === "PENDIENTE") {
+      agregarNotificacionGestionServidor_(notificaciones, leidas, {
+        id: "COBERTURA_" + permiso.id,
+        tipo: "COBERTURA",
+        titulo: "Solicitud de cobertura",
+        descripcion: (solicitante ? solicitante.nombre : permiso.servidorId) +
+          " te propone cubrir su área el " + permiso.fechaServicio + ".",
+        fecha: permiso.creado,
+        destino: "coberturasServidor"
+      });
+    }
+  });
+
+  listarContenidoServidor_(servidorId)
+    .filter(function(contenido) {
+      return ["AVISO", "PREDICACION"].indexOf(contenido.tipo) >= 0;
+    })
+    .forEach(function(contenido) {
+      const esPredicacion = contenido.tipo === "PREDICACION";
+      agregarNotificacionGestionServidor_(notificaciones, leidas, {
+        id: contenido.tipo + "_" + contenido.id,
+        tipo: contenido.tipo,
+        titulo: esPredicacion ? "Nueva predicación" : "Nuevo aviso",
+        descripcion: contenido.titulo,
+        fecha: fechaHoraGestionServidor_(contenido.publicado) || contenido.fecha,
+        destino: esPredicacion ? "predicacionesServidor" : "avisosServidor"
+      });
+    });
+
+  return notificaciones.sort(function(a, b) {
+    if (a.leida !== b.leida) {
+      return a.leida ? 1 : -1;
+    }
+
+    return String(b.fecha || "").localeCompare(String(a.fecha || ""));
+  });
+}
+
+
+function agregarNotificacionGestionServidor_(lista, leidas, datos) {
+  const id = String(datos.id || "").trim().toUpperCase();
+
+  if (!id) {
+    return;
+  }
+
+  lista.push({
+    id: id,
+    tipo: datos.tipo,
+    titulo: datos.titulo,
+    descripcion: datos.descripcion,
+    fecha: datos.fecha,
+    destino: datos.destino,
+    leida: Boolean(leidas[id])
+  });
+}
+
+
+function listarNotificacionesLeidasServidor_(servidorId) {
+  const hoja = obtenerHojaNotificacionesLeidasServidores_();
+  const leidas = {};
+
+  if (hoja.getLastRow() < 2) {
+    return leidas;
+  }
+
+  hoja.getRange(2, 1, hoja.getLastRow() - 1, 3)
+    .getValues()
+    .forEach(function(fila) {
+      if (normalizarIdServidor_(fila[0]) === servidorId) {
+        leidas[String(fila[1] || "").trim().toUpperCase()] = true;
+      }
+    });
+
+  return leidas;
+}
+
+
 function actualizarOrganizacionServidor(token, datos) {
   const sesion = resolverSesionServidor_(token);
 
@@ -644,6 +854,15 @@ function obtenerHojaActividadesAreaServidores_() {
     "SUPERVISOR_ID",
     "TIPO_ASIGNACION",
     "ACTIVO"
+  ]);
+}
+
+
+function obtenerHojaNotificacionesLeidasServidores_() {
+  return obtenerHojaGestionServidor_(GESTION_HOJA_NOTIFICACIONES_LEIDAS, [
+    "SERVIDOR_ID",
+    "NOTIFICACION_ID",
+    "FECHA_LECTURA"
   ]);
 }
 

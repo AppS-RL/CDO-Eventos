@@ -236,10 +236,19 @@ function obtenerContenidoServidor(token) {
 
   const contenidos = listarContenidoServidor_(sesion.identidad.id);
   const progreso = obtenerProgresoServidor_(sesion.identidad.id);
+  const notificacionesLeidas = listarNotificacionesLeidasServidor_(
+    sesion.identidad.id
+  );
 
   return {
     ok: true,
     contenidos: contenidos.map(function(contenido) {
+      const generaNotificacion = ["AVISO", "PREDICACION"]
+        .indexOf(contenido.tipo) >= 0;
+      const notificacionId = generaNotificacion
+        ? contenido.tipo + "_" + contenido.id
+        : "";
+
       return {
         id: contenido.id,
         tipo: contenido.tipo,
@@ -249,7 +258,12 @@ function obtenerContenidoServidor(token) {
         enlace: contenido.enlace,
         color: contenido.color,
         prenda: contenido.prenda,
-        completada: Boolean(progreso[contenido.id])
+        publicado: formatearFechaHoraContenidoServidor_(contenido.publicado),
+        completada: Boolean(progreso[contenido.id]),
+        notificacionId: notificacionId,
+        notificacionLeida: notificacionId
+          ? Boolean(notificacionesLeidas[notificacionId])
+          : true
       };
     })
   };
@@ -518,6 +532,15 @@ function formatearFechaContenidoServidor_(valor) {
 
   const texto = String(valor || "").trim();
   return /^\d{4}-\d{2}-\d{2}$/.test(texto) ? texto : "";
+}
+
+
+function formatearFechaHoraContenidoServidor_(valor) {
+  if (valor instanceof Date && !isNaN(valor.getTime())) {
+    return valor.toISOString();
+  }
+
+  return String(valor || "").trim();
 }
 
 

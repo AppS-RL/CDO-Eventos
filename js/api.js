@@ -325,6 +325,14 @@ async function publicarAvisoAreaServidorAPI(token, datos) {
 }
 
 
+async function marcarNotificacionesServidorAPI(token, notificacionIds) {
+    return llamarAPI("marcarNotificacionesServidor", {
+        token: token,
+        notificacionIds: notificacionIds
+    });
+}
+
+
 async function actualizarOrganizacionServidorAPI(token, datos) {
     return llamarAPI("actualizarOrganizacionServidor", {
         token: token,

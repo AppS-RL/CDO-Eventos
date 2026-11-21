@@ -13,6 +13,7 @@ actuales del evento `SERVIDORES`.
 - `ActividadesAreaServidores`: horarios, actividades, responsables y supervisores.
 - `ContenidoServidores`: uniformes, actividades, predicaciones y avisos.
 - `ProgresoServidores`: actividades marcadas como completadas.
+- `NotificacionesLeidasServidores`: novedades que cada usuario ya consultó.
 
 ## Roles
 
@@ -57,3 +58,10 @@ Fue registrado como elaborado por Monica de Ramirez y contiene 36 asignaciones
 mensuales tomadas del documento de Audio. Los capitanes pueden consultar el rol,
 pero no editarlo. Una cobertura autorizada no altera la asignación original;
 sólo registra quién la realizará en una fecha específica.
+
+## Notificaciones dentro del portal
+
+La campana muestra como nuevas las solicitudes de permiso que requieren
+revisión, las solicitudes de cobertura, los avisos y las predicaciones. Al
+abrir una notificación o elegir `Marcar todas como leídas`, se registra la
+lectura por usuario sin modificar el permiso ni el contenido original.

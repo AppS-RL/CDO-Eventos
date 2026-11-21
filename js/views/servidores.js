@@ -322,6 +322,11 @@ function mostrarPanelServidor(
         contenidos,
         "AVISO"
     );
+    const notificaciones = combinarNotificacionesServidor(
+        gestion?.notificaciones || [],
+        contenidos
+    );
+    const notificacionesNuevas = notificaciones.filter(item => !item.leida).length;
     const pendientes = actividades
         .concat(predicaciones)
         .filter(item => !item.completada)
@@ -359,9 +364,20 @@ function mostrarPanelServidor(
                     <h1>Hola, ${nombre}</h1>
                     <p>${id}</p>
                 </div>
-                <button id="btnCerrarSesionServidor" type="button">
-                    Salir
-                </button>
+                <div class="servidores-header-acciones">
+                    <button
+                        class="servidores-campana"
+                        type="button"
+                        data-ir-modulo="notificacionesServidor"
+                        aria-label="Notificaciones${notificacionesNuevas ? `, ${notificacionesNuevas} nuevas` : ""}"
+                    >
+                        <span aria-hidden="true">🔔</span>
+                        ${notificacionesNuevas ? `<strong>${notificacionesNuevas > 99 ? "99+" : notificacionesNuevas}</strong>` : ""}
+                    </button>
+                    <button id="btnCerrarSesionServidor" type="button">
+                        Salir
+                    </button>
+                </div>
             </header>
 
             <main class="servidores-panel">
@@ -407,6 +423,7 @@ function mostrarPanelServidor(
                     <button id="btnVolverInicioServidor" type="button">← Volver al inicio</button>
                 </div>
 
+                ${renderizarNotificacionesServidor(notificaciones)}
                 ${renderizarPermisosServidor(gestion)}
                 ${renderizarCoberturasServidor(gestion)}
                 ${puedeSupervisar ? renderizarGestionEquipoServidor(gestion) : ""}
@@ -500,6 +517,7 @@ function mostrarPanelServidor(
             );
         });
 
+    configurarEventosNotificacionesServidor();
     configurarEventosGestionServidor(gestion);
     configurarNavegacionGestionServidor();
     configurarSelectorRolServicioServidor();
@@ -594,6 +612,173 @@ function crearAccesoModuloServidor(
 
 function filtrarContenidoServidor(contenidos, tipo) {
     return contenidos.filter(item => item.tipo === tipo);
+}
+
+
+function combinarNotificacionesServidor(notificacionesGestion, contenidos) {
+    const notificaciones = [...notificacionesGestion];
+    const existentes = new Set(notificaciones.map(item => item.id));
+
+    contenidos
+        .filter(item => ["AVISO", "PREDICACION"].includes(item.tipo))
+        .forEach(item => {
+            const id = item.notificacionId || `${item.tipo}_${item.id}`;
+
+            if (existentes.has(id)) return;
+
+            const esPredicacion = item.tipo === "PREDICACION";
+            notificaciones.push({
+                id: id,
+                tipo: item.tipo,
+                titulo: esPredicacion ? "Nueva predicación" : "Nuevo aviso",
+                descripcion: item.titulo,
+                fecha: item.publicado || item.fecha,
+                destino: esPredicacion ? "predicacionesServidor" : "avisosServidor",
+                leida: Boolean(item.notificacionLeida)
+            });
+            existentes.add(id);
+        });
+
+    return notificaciones.sort((a, b) => {
+        if (Boolean(a.leida) !== Boolean(b.leida)) {
+            return a.leida ? 1 : -1;
+        }
+
+        return String(b.fecha || "").localeCompare(String(a.fecha || ""));
+    });
+}
+
+
+function renderizarNotificacionesServidor(notificaciones) {
+    const nuevas = notificaciones.filter(item => !item.leida);
+
+    return `
+        <section id="notificacionesServidor" class="servidores-seccion servidores-notificaciones">
+            <div class="servidores-seccion-titulo servidores-notificaciones-titulo">
+                <span>🔔</span>
+                <div>
+                    <h2>Notificaciones</h2>
+                    <p>${nuevas.length ? `${nuevas.length} nueva${nuevas.length === 1 ? "" : "s"}` : "Todo está leído"}</p>
+                </div>
+                ${nuevas.length ? `
+                    <button id="btnLeerTodasNotificaciones" type="button">
+                        Marcar todas como leídas
+                    </button>
+                ` : ""}
+            </div>
+
+            ${notificaciones.length ? `
+                <div class="servidores-notificaciones-lista">
+                    ${notificaciones.map(notificacion => `
+                        <button
+                            class="servidores-notificacion ${notificacion.leida ? "leida" : "nueva"}"
+                            type="button"
+                            data-notificacion-id="${escaparHTML(notificacion.id)}"
+                            data-notificacion-destino="${escaparHTML(notificacion.destino)}"
+                            data-notificacion-leida="${Boolean(notificacion.leida)}"
+                        >
+                            <span class="servidores-notificacion-icono">${iconoNotificacionServidor(notificacion.tipo)}</span>
+                            <span class="servidores-notificacion-contenido">
+                                <strong>${escaparHTML(notificacion.titulo)}</strong>
+                                <small>${escaparHTML(notificacion.descripcion)}</small>
+                                <time>${escaparHTML(formatearFechaNotificacionServidor(notificacion.fecha))}</time>
+                            </span>
+                            ${notificacion.leida ? "" : `<span class="servidores-notificacion-punto" aria-label="Nueva"></span>`}
+                        </button>
+                    `).join("")}
+                </div>
+            ` : crearEstadoVacioServidor("Cuando llegue una solicitud, aviso o predicación, aparecerá aquí.")}
+        </section>
+    `;
+}
+
+
+function iconoNotificacionServidor(tipo) {
+    return {
+        PERMISO: "🗓️",
+        COBERTURA: "🤝",
+        AVISO: "📣",
+        PREDICACION: "📖"
+    }[tipo] || "🔔";
+}
+
+
+function formatearFechaNotificacionServidor(fecha) {
+    if (!fecha) return "Fecha pendiente";
+    const fechaSimple = String(fecha).match(/^(\d{4})-(\d{2})-(\d{2})$/);
+
+    if (fechaSimple) {
+        return new Date(
+            Number(fechaSimple[1]),
+            Number(fechaSimple[2]) - 1,
+            Number(fechaSimple[3])
+        ).toLocaleDateString("es-MX", {
+            day: "numeric",
+            month: "short",
+            year: "numeric"
+        });
+    }
+
+    const valor = new Date(fecha);
+
+    if (Number.isNaN(valor.getTime())) {
+        return String(fecha);
+    }
+
+    return valor.toLocaleDateString("es-MX", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+        hour: "numeric",
+        minute: "2-digit"
+    });
+}
+
+
+function configurarEventosNotificacionesServidor() {
+    document.querySelectorAll("[data-notificacion-id]").forEach(boton => {
+        boton.addEventListener("click", async () => {
+            const destino = boton.dataset.notificacionDestino || "";
+            moduloActivoServidor = destino;
+
+            if (boton.dataset.notificacionLeida === "true") {
+                actualizarVistaModuloServidor(destino);
+                return;
+            }
+
+            const sesion = obtenerSesionServidorGuardada();
+            boton.disabled = true;
+
+            try {
+                const respuesta = await marcarNotificacionesServidorAPI(
+                    sesion.token,
+                    [boton.dataset.notificacionId]
+                );
+
+                if (!respuesta?.ok) {
+                    throw new Error(respuesta?.mensaje || "No fue posible actualizar la notificación.");
+                }
+
+                await cargarPanelServidor(sesion.servidor, sesion.token);
+            } catch (error) {
+                boton.disabled = false;
+                alert(error.message || "No fue posible actualizar la notificación.");
+            }
+        });
+    });
+
+    document.getElementById("btnLeerTodasNotificaciones")?.addEventListener("click", async evento => {
+        const boton = evento.currentTarget;
+        const ids = Array.from(document.querySelectorAll("[data-notificacion-leida='false']"))
+            .map(item => item.dataset.notificacionId);
+        const sesion = obtenerSesionServidorGuardada();
+
+        await ejecutarAccionGestionServidor(boton, "Guardando...", async () => {
+            const respuesta = await marcarNotificacionesServidorAPI(sesion.token, ids);
+            if (!respuesta?.ok) throw new Error(respuesta?.mensaje || "No fue posible actualizar las notificaciones.");
+            await cargarPanelServidor(sesion.servidor, sesion.token);
+        });
+    });
 }
 
 
