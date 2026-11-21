@@ -109,8 +109,14 @@ function sincronizarPushContenidoServidores() {
     const id = String(fila[0] || "").trim().toUpperCase();
     const tipo = String(fila[1] || "").trim().toUpperCase();
     const activo = String(fila[7] || "SI").trim().toUpperCase();
+    const vigente = contenidoVigenteServidor_({
+      tipo: tipo,
+      fecha: formatearFechaContenidoServidor_(fila[4]),
+      publicado: fila[8]
+    });
 
-    if (!id || enviados[id] || activo === "NO" || ["AVISO", "PREDICACION"].indexOf(tipo) < 0) {
+    if (!id || enviados[id] || activo === "NO" || !vigente ||
+        ["AVISO", "PREDICACION"].indexOf(tipo) < 0) {
       return;
     }
 

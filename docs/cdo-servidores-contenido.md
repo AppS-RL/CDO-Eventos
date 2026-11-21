@@ -22,6 +22,10 @@ ID. Las actividades y predicaciones se pueden marcar como completadas. Ese
 seguimiento se guarda automáticamente en `ProgresoServidores`; esta segunda
 hoja no se captura manualmente.
 
+Los avisos con fecha permanecen visibles hasta terminar ese día. Si un aviso no
+tiene fecha, permanece visible durante siete días desde `PUBLICADO`. Las
+predicaciones permanecen disponibles hasta cambiar `ACTIVO` a `NO`.
+
 ## Ejemplos
 
 Uniforme para todos:

@@ -430,6 +430,7 @@ function listarContenidoServidor_(servidorId) {
         item.tipo &&
         item.titulo &&
         item.activo &&
+        contenidoVigenteServidor_(item) &&
         destinatarioIncluyeServidor_(item.destinatario, servidorId)
       );
     })
@@ -437,6 +438,33 @@ function listarContenidoServidor_(servidorId) {
       return String(a.fecha || "9999-12-31")
         .localeCompare(String(b.fecha || "9999-12-31"));
     });
+}
+
+
+function contenidoVigenteServidor_(item) {
+  if (!item || item.tipo !== "AVISO") {
+    return true;
+  }
+
+  const hoy = Utilities.formatDate(
+    new Date(),
+    Session.getScriptTimeZone(),
+    "yyyy-MM-dd"
+  );
+
+  if (item.fecha) {
+    return String(item.fecha) >= hoy;
+  }
+
+  const publicado = item.publicado instanceof Date
+    ? item.publicado
+    : new Date(item.publicado);
+
+  if (isNaN(publicado.getTime())) {
+    return true;
+  }
+
+  return Date.now() < publicado.getTime() + (7 * 24 * 60 * 60 * 1000);
 }
 
 
