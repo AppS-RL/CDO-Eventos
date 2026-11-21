@@ -39,3 +39,11 @@ texto legible.
 La primera consulta de gestión también crea `NotificacionesLeidasServidores`,
 que sólo conserva el usuario, el identificador de la notificación y la fecha de
 lectura.
+
+## Notificaciones push
+
+El cliente registra el token del dispositivo mediante `registrarPushServidor`.
+Las credenciales privadas de Firebase nunca se guardan en el repositorio: se
+configuran como propiedades privadas del proyecto de Apps Script con las claves
+`FCM_PROJECT_ID`, `FCM_CLIENT_EMAIL` y `FCM_PRIVATE_KEY`. El navegador sólo
+recibe la configuración pública y la clave VAPID.

@@ -18,6 +18,8 @@ function prepararGestionServidores() {
   obtenerHojaProgramasAreaServidores_();
   obtenerHojaActividadesAreaServidores_();
   obtenerHojaNotificacionesLeidasServidores_();
+  obtenerHojaDispositivosPush_();
+  obtenerHojaEnviosPush_();
   sincronizarServiciosUniformes_();
   asegurarAdministradorServidor_("SERVIDOR-0001");
   configurarResponsablesMinisterio2026_();
@@ -321,6 +323,17 @@ function solicitarPermisoServidor(token, datos) {
 
   obtenerHojaPermisosServidores_().appendRow(fila);
 
+  enviarPushServidoresSeguro_([
+    perfil.capitanId,
+    GESTION_PASTOR_APROBADOR_ID,
+    reemplazoId
+  ], {
+    id: "PERMISO_" + permisoId,
+    titulo: "Nueva solicitud de permiso",
+    descripcion: sesion.identidad.nombre + " solicita permiso para el " + servicio.fecha + ".",
+    destino: "notificacionesServidor"
+  });
+
   return {
     ok: true,
     permisoId: permisoId,
@@ -583,8 +596,9 @@ function publicarAvisoAreaServidor(token, datos) {
     throw new Error("El área todavía no tiene integrantes asignados.");
   }
 
+  const avisoId = "AVISO-" + Utilities.getUuid().slice(0, 8).toUpperCase();
   obtenerHojaContenidoServidores_().appendRow([
-    "AVISO-" + Utilities.getUuid().slice(0, 8).toUpperCase(),
+    avisoId,
     "AVISO",
     titulo,
     descripcion,
@@ -596,6 +610,14 @@ function publicarAvisoAreaServidor(token, datos) {
     "",
     ""
   ]);
+
+  enviarPushServidoresSeguro_(destinatarios, {
+    id: "AVISO_" + avisoId,
+    titulo: "Nuevo aviso",
+    descripcion: titulo,
+    destino: "avisosServidor"
+  });
+  marcarPushContenidoEnviado_(avisoId, "AVISO", destinatarios.length);
 
   return { ok: true, mensaje: "Aviso publicado." };
 }

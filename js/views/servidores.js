@@ -521,6 +521,18 @@ function mostrarPanelServidor(
     configurarEventosGestionServidor(gestion);
     configurarNavegacionGestionServidor();
     configurarSelectorRolServicioServidor();
+    const sesionPush = obtenerSesionServidorGuardada();
+    if (sesionPush?.token && typeof sincronizarPushServidor === "function") {
+        sincronizarPushServidor(sesionPush.token).catch(error => {
+            console.warn("No fue posible actualizar las notificaciones del teléfono.", error);
+        });
+    }
+    if (!moduloActivoServidor) {
+        const moduloDesdeEnlace = new URLSearchParams(window.location.search).get("abrir");
+        if (moduloDesdeEnlace && document.getElementById(moduloDesdeEnlace)) {
+            moduloActivoServidor = moduloDesdeEnlace;
+        }
+    }
     actualizarVistaModuloServidor(moduloActivoServidor, false);
 }
 
@@ -651,6 +663,10 @@ function combinarNotificacionesServidor(notificacionesGestion, contenidos) {
 
 function renderizarNotificacionesServidor(notificaciones) {
     const nuevas = notificaciones.filter(item => !item.leida);
+    const estadoPush = typeof obtenerEstadoPushServidor === "function"
+        ? obtenerEstadoPushServidor()
+        : { estado: "CONFIGURANDO", titulo: "Notificaciones del teléfono", descripcion: "Configuración pendiente." };
+    const puedeActivarPush = estadoPush.estado === "DISPONIBLES";
 
     return `
         <section id="notificacionesServidor" class="servidores-seccion servidores-notificaciones">
@@ -663,6 +679,19 @@ function renderizarNotificacionesServidor(notificaciones) {
                 ${nuevas.length ? `
                     <button id="btnLeerTodasNotificaciones" type="button">
                         Marcar todas como leídas
+                    </button>
+                ` : ""}
+            </div>
+
+            <div class="servidores-push servidores-push-${estadoPush.estado.toLowerCase()}">
+                <span aria-hidden="true">📱</span>
+                <div>
+                    <strong>${escaparHTML(estadoPush.titulo)}</strong>
+                    <small>${escaparHTML(estadoPush.descripcion)}</small>
+                </div>
+                ${puedeActivarPush ? `
+                    <button id="btnActivarPushServidor" type="button">
+                        Activar en este teléfono
                     </button>
                 ` : ""}
             </div>
@@ -736,6 +765,17 @@ function formatearFechaNotificacionServidor(fecha) {
 
 
 function configurarEventosNotificacionesServidor() {
+    document.getElementById("btnActivarPushServidor")?.addEventListener("click", async evento => {
+        const boton = evento.currentTarget;
+        const sesion = obtenerSesionServidorGuardada();
+
+        await ejecutarAccionGestionServidor(boton, "Activando...", async () => {
+            const respuesta = await activarPushServidor(sesion.token);
+            alert(respuesta?.mensaje || "Notificaciones activadas en este teléfono.");
+            await cargarPanelServidor(sesion.servidor, sesion.token);
+        });
+    });
+
     document.querySelectorAll("[data-notificacion-id]").forEach(boton => {
         boton.addEventListener("click", async () => {
             const destino = boton.dataset.notificacionDestino || "";

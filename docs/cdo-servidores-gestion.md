@@ -65,3 +65,10 @@ La campana muestra como nuevas las solicitudes de permiso que requieren
 revisión, las solicitudes de cobertura, los avisos y las predicaciones. Al
 abrir una notificación o elegir `Marcar todas como leídas`, se registra la
 lectura por usuario sin modificar el permiso ni el contenido original.
+
+Cada servidor puede activar notificaciones push desde su teléfono. La
+suscripción queda vinculada a su ID de servidor y se guarda en
+`DispositivosPushServidores`. Las notificaciones internas continúan
+funcionando aunque el navegador no admita push o el usuario no lo autorice.
+Los avisos y predicaciones cargados directamente en la hoja se revisan cada
+cinco minutos; `EnviosPushServidores` evita enviarlos dos veces.

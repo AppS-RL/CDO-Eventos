@@ -333,6 +333,15 @@ async function marcarNotificacionesServidorAPI(token, notificacionIds) {
 }
 
 
+async function registrarPushServidorAPI(token, tokenDispositivo, dispositivo) {
+    return llamarAPI("registrarPushServidor", {
+        token: token,
+        tokenDispositivo: tokenDispositivo,
+        dispositivo: dispositivo
+    });
+}
+
+
 async function actualizarOrganizacionServidorAPI(token, datos) {
     return llamarAPI("actualizarOrganizacionServidor", {
         token: token,

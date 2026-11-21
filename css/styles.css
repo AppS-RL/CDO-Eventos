@@ -407,6 +407,59 @@ h1{
     gap: 9px;
 }
 
+.servidores-push {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+    padding: 14px;
+    border: 1px solid #bfdbfe;
+    border-radius: 16px;
+    background: #eff6ff;
+    color: #1e3a8a;
+}
+
+.servidores-push > span {
+    font-size: 24px;
+}
+
+.servidores-push strong,
+.servidores-push small {
+    display: block;
+}
+
+.servidores-push small {
+    margin-top: 3px;
+    color: #475569;
+    font-size: 11px;
+}
+
+.servidores-push button {
+    padding: 9px 12px;
+    border: 0;
+    border-radius: 10px;
+    background: #1d4ed8;
+    color: #fff;
+    font: inherit;
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.servidores-push-activas {
+    border-color: #bbf7d0;
+    background: #f0fdf4;
+    color: #166534;
+}
+
+.servidores-push-bloqueadas,
+.servidores-push-no_compatible {
+    border-color: #fed7aa;
+    background: #fff7ed;
+    color: #9a3412;
+}
+
 .servidores-notificacion {
     position: relative;
     display: grid;
@@ -4041,6 +4094,14 @@ footer{
 }
 
 @media (max-width: 600px) {
+    .servidores-push {
+        grid-template-columns: auto 1fr;
+    }
+
+    .servidores-push button {
+        grid-column: 1 / -1;
+        width: 100%;
+    }
     .copa-card {
         gap: 15px;
     }
