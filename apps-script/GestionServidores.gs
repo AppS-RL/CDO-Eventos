@@ -9,6 +9,7 @@ const GESTION_LIMITE_PERMISOS = 6;
 const GESTION_DIAS_PERMISO = 15;
 const GESTION_PASTOR_APROBADOR_ID = "SERVIDOR-1000";
 const GESTION_COORDINADORA_ROLES_ID = "SERVIDOR-0029";
+const GESTION_RESPONSABLE_ASISTENCIA_ID = "SERVIDOR-0030";
 
 
 function prepararGestionServidores() {
@@ -62,9 +63,14 @@ function obtenerGestionServidor(token) {
   );
   const puedeVerTodo = tieneRolGestionServidor_(perfil, "PASTOR") ||
     tieneRolGestionServidor_(perfil, "ADMINISTRADOR");
+  const puedeTomarAsistencia = puedeVerTodo ||
+    servidorId === GESTION_RESPONSABLE_ASISTENCIA_ID;
+  const puedeGestionarContenido = puedeVerTodo;
+  const puedeVerSaludGeneral = tieneRolGestionServidor_(perfil, "PASTOR") ||
+    tieneRolGestionServidor_(perfil, "ADMINISTRADOR");
   const esCapitan = tieneRolGestionServidor_(perfil, "CAPITAN");
   const equipo = personas.filter(function(persona) {
-    if (puedeVerTodo) {
+    if (puedeVerTodo || puedeTomarAsistencia) {
       return true;
     }
 
@@ -98,10 +104,19 @@ function obtenerGestionServidor(token) {
       perfilesPorId[permiso.servidorId]
     ) && permiso.estado !== "CANCELADO";
   });
+  const perfilSerializado = serializarPerfilGestionServidor_(
+    perfil,
+    asistencias,
+    permisos
+  );
+  perfilSerializado.ahorro = personasPorId[servidorId]
+    ? Number(personasPorId[servidorId].ahorro || 0)
+    : 0;
 
   return {
     ok: true,
-    perfil: serializarPerfilGestionServidor_(perfil, asistencias, permisos),
+    puedeTomarAsistencia: puedeTomarAsistencia,
+    perfil: perfilSerializado,
     notificaciones: notificaciones,
     programasServicio: programasServicio,
     servicios: servicios,
@@ -127,7 +142,7 @@ function obtenerGestionServidor(token) {
     }),
     equipo: equipo.map(function(persona) {
       const perfilPersona = perfilesPorId[persona.id];
-      return {
+      const resultadoPersona = {
         id: persona.id,
         nombre: persona.nombre,
         area: perfilPersona.area,
@@ -136,12 +151,24 @@ function obtenerGestionServidor(token) {
         limitePermisos: GESTION_LIMITE_PERMISOS,
         faltasSinPermiso: contarFaltasSinPermisoGestionServidor_(persona.id, asistencias)
       };
+
+      if (puedeVerSaludGeneral) {
+        resultadoPersona.salud = serializarSaludGestionServidor_(perfilPersona);
+      }
+
+      return resultadoPersona;
     }),
     asistencias: asistencias.filter(function(asistencia) {
-      return puedeVerTodo || equipo.some(function(persona) {
+      return puedeVerTodo || puedeTomarAsistencia || equipo.some(function(persona) {
         return persona.id === asistencia.servidorId;
       });
-    })
+    }),
+    audienciasContenido: puedeGestionarContenido
+      ? crearAudienciasContenidoServidor_(personas, perfilesPorId)
+      : null,
+    publicacionesSeguimiento: puedeGestionarContenido
+      ? listarSeguimientoContenidoServidor_(personas, perfilesPorId)
+      : []
   };
 }
 
@@ -171,7 +198,8 @@ function marcarNotificacionesServidor(token, notificacionIds) {
   });
   listarContenidoServidor_(servidorId)
     .filter(function(contenido) {
-      return ["AVISO", "PREDICACION"].indexOf(contenido.tipo) >= 0;
+      return ["AVISO", "PREDICACION", "ACTIVIDAD"]
+        .indexOf(contenido.tipo) >= 0;
     })
     .forEach(function(contenido) {
       permitidas[contenido.tipo + "_" + contenido.id] = true;
@@ -478,8 +506,9 @@ function guardarListaAsistenciaServidor(token, servicioId, registros) {
   }
 
   const perfilActor = obtenerPerfilGestionServidor_(sesion.identidad.id);
-  const puedeRegistrar = tieneRolGestionServidor_(perfilActor, "CAPITAN") ||
-    tieneRolGestionServidor_(perfilActor, "ADMINISTRADOR");
+  const puedeRegistrar = tieneRolGestionServidor_(perfilActor, "PASTOR") ||
+    tieneRolGestionServidor_(perfilActor, "ADMINISTRADOR") ||
+    sesion.identidad.id === GESTION_RESPONSABLE_ASISTENCIA_ID;
 
   if (!puedeRegistrar) {
     throw new Error("No tienes permiso para pasar lista.");
@@ -506,8 +535,7 @@ function guardarListaAsistenciaServidor(token, servicioId, registros) {
   entradas.forEach(function(entrada) {
     const servidorId = normalizarIdServidor_(entrada.servidorId);
     const perfilServidor = obtenerPerfilGestionServidor_(servidorId);
-    const autorizado = tieneRolGestionServidor_(perfilActor, "ADMINISTRADOR") ||
-      perteneceAlEquipoGestionServidor_(servidorId, perfilActor, perfilServidor);
+    const autorizado = puedeRegistrar;
 
     if (!autorizado || !obtenerIdentidadServidor_(servidorId)) {
       return;
@@ -623,6 +651,316 @@ function publicarAvisoAreaServidor(token, datos) {
 }
 
 
+function publicarContenidoDirigidoServidor(token, datos) {
+  const sesion = resolverSesionServidor_(token);
+
+  if (!sesion) {
+    return { ok: false, mensaje: "La sesión terminó." };
+  }
+
+  const perfil = obtenerPerfilGestionServidor_(sesion.identidad.id);
+
+  if (!tieneRolGestionServidor_(perfil, "PASTOR")) {
+    throw new Error("Sólo los pastores pueden publicar tareas.");
+  }
+
+  const entrada = datos || {};
+  const tipo = normalizarTipoContenidoServidor_(entrada.tipo);
+  const titulo = String(entrada.titulo || "").trim();
+  const descripcion = String(entrada.descripcion || "").trim();
+  const fecha = formatearFechaContenidoServidor_(entrada.fecha);
+  const enlaceOriginal = String(entrada.enlace || "").trim();
+  const enlace = normalizarEnlaceContenidoServidor_(enlaceOriginal);
+  const alcance = String(entrada.alcance || "TODOS").trim().toUpperCase();
+
+  if (["PREDICACION", "ACTIVIDAD"].indexOf(tipo) < 0) {
+    throw new Error("Selecciona si publicarás una predicación o actividad.");
+  }
+
+  if (titulo.length < 3 || descripcion.length < 5) {
+    throw new Error("Escribe un título y la indicación de la tarea.");
+  }
+
+  if (!fecha) {
+    throw new Error("Selecciona la fecha límite.");
+  }
+
+  if (enlaceOriginal && !enlace) {
+    throw new Error("El enlace debe comenzar con https://");
+  }
+
+  const personas = listarPersonasGestionServidor_();
+  const perfilesPorId = indexarPerfilesGestionServidor_(personas);
+  const resultadoDestinatarios = resolverDestinatariosContenidoServidor_(
+    alcance,
+    entrada,
+    personas,
+    perfilesPorId
+  );
+  const destinatarios = resultadoDestinatarios.ids;
+
+  if (!destinatarios.length) {
+    throw new Error("La publicación necesita al menos un destinatario.");
+  }
+
+  const contenidoId = tipo + "-" +
+    Utilities.getUuid().slice(0, 8).toUpperCase();
+  obtenerHojaContenidoServidores_().appendRow([
+    contenidoId,
+    tipo,
+    titulo,
+    descripcion,
+    fecha,
+    enlace,
+    destinatarios.join(","),
+    "SI",
+    new Date(),
+    "",
+    "",
+    sesion.identidad.id,
+    resultadoDestinatarios.etiqueta
+  ]);
+
+  enviarPushServidoresSeguro_(destinatarios, {
+    id: tipo + "_" + contenidoId,
+    titulo: tipo === "PREDICACION"
+      ? "Nueva predicación"
+      : "Nueva actividad",
+    descripcion: titulo,
+    destino: tipo === "PREDICACION"
+      ? "predicacionesServidor"
+      : "actividadesServidor"
+  });
+  marcarPushContenidoEnviado_(contenidoId, tipo, destinatarios.length);
+
+  return {
+    ok: true,
+    contenidoId: contenidoId,
+    destinatarios: destinatarios.length,
+    mensaje: tipo === "PREDICACION"
+      ? "Predicación publicada."
+      : "Actividad publicada."
+  };
+}
+
+
+function resolverDestinatariosContenidoServidor_(
+  alcance,
+  entrada,
+  personas,
+  perfilesPorId
+) {
+  const activos = personas.filter(function(persona) {
+    return perfilesPorId[persona.id] && perfilesPorId[persona.id].activo;
+  });
+
+  if (alcance === "TODOS") {
+    return {
+      ids: activos.map(function(persona) { return persona.id; }),
+      etiqueta: "TODOS"
+    };
+  }
+
+  if (alcance === "EQUIPO") {
+    const equipo = String(entrada.equipo || "").trim();
+    const equipoNormalizado = equipo.toUpperCase();
+
+    if (!equipoNormalizado) {
+      throw new Error("Selecciona el equipo destinatario.");
+    }
+
+    return {
+      ids: activos.filter(function(persona) {
+        return String(perfilesPorId[persona.id].area || "")
+          .trim()
+          .toUpperCase() === equipoNormalizado;
+      }).map(function(persona) {
+        return persona.id;
+      }),
+      etiqueta: "EQUIPO: " + equipo
+    };
+  }
+
+  if (alcance === "SERVIDORES") {
+    const solicitados = (Array.isArray(entrada.servidorIds)
+      ? entrada.servidorIds
+      : [entrada.servidorIds])
+      .map(normalizarIdServidor_)
+      .filter(Boolean);
+    const permitidos = {};
+    activos.forEach(function(persona) {
+      permitidos[persona.id] = true;
+    });
+    const ids = solicitados.filter(function(id, indice, todos) {
+      return permitidos[id] && todos.indexOf(id) === indice;
+    });
+
+    return {
+      ids: ids,
+      etiqueta: "SERVIDORES SELECCIONADOS"
+    };
+  }
+
+  throw new Error("Selecciona el alcance de la publicación.");
+}
+
+
+function crearAudienciasContenidoServidor_(personas, perfilesPorId) {
+  const equipos = [];
+  const vistos = {};
+  const personasActivas = personas.filter(function(persona) {
+    const perfil = perfilesPorId[persona.id];
+    return perfil && perfil.activo;
+  }).map(function(persona) {
+    const perfil = perfilesPorId[persona.id];
+    const area = String(perfil.area || "").trim();
+
+    if (area && !vistos[area.toUpperCase()]) {
+      vistos[area.toUpperCase()] = true;
+      equipos.push(area);
+    }
+
+    return {
+      id: persona.id,
+      nombre: persona.nombre,
+      area: area,
+      roles: perfil.roles
+    };
+  });
+
+  equipos.sort(function(a, b) { return a.localeCompare(b); });
+  personasActivas.sort(function(a, b) {
+    return a.nombre.localeCompare(b.nombre);
+  });
+
+  return {
+    equipos: equipos,
+    personas: personasActivas
+  };
+}
+
+
+function listarSeguimientoContenidoServidor_(personas, perfilesPorId) {
+  const personasPorId = indexarPersonasGestionServidor_(personas);
+  const destinatariosActivos = personas.filter(function(persona) {
+    return perfilesPorId[persona.id] && perfilesPorId[persona.id].activo;
+  });
+  const progreso = listarProgresoContenidoServidor_();
+  const hoja = obtenerHojaContenidoServidores_();
+
+  if (hoja.getLastRow() < 2) {
+    return [];
+  }
+
+  return hoja
+    .getRange(2, 1, hoja.getLastRow() - 1, 13)
+    .getValues()
+    .map(function(fila) {
+      return {
+        id: String(fila[0] || "").trim().toUpperCase(),
+        tipo: normalizarTipoContenidoServidor_(fila[1]),
+        titulo: String(fila[2] || "").trim(),
+        descripcion: String(fila[3] || "").trim(),
+        fecha: formatearFechaContenidoServidor_(fila[4]),
+        enlace: normalizarEnlaceContenidoServidor_(fila[5]),
+        destinatario: String(fila[6] || "TODOS").trim().toUpperCase(),
+        activo: valorActivoServidor_(fila[7]),
+        publicado: formatearFechaHoraContenidoServidor_(fila[8]),
+        creadoPor: normalizarIdServidor_(fila[11]),
+        alcance: String(fila[12] || "").trim()
+      };
+    })
+    .filter(function(item) {
+      return item.id && item.titulo && item.activo &&
+        ["PREDICACION", "ACTIVIDAD"].indexOf(item.tipo) >= 0;
+    })
+    .map(function(item) {
+      const destinos = item.destinatario.split(",").map(function(valor) {
+        return valor.trim().toUpperCase();
+      });
+      const esGlobal = destinos.indexOf("TODOS") >= 0 ||
+        destinos.indexOf("*") >= 0;
+      const destinatarios = destinatariosActivos.filter(function(persona) {
+        return esGlobal || destinos.indexOf(persona.id) >= 0;
+      }).map(function(persona) {
+        const clave = persona.id + "|" + item.id;
+        const registro = progreso[clave] || {};
+        const completada = Boolean(registro.completada);
+        const vista = Boolean(registro.vista || completada);
+        return {
+          id: persona.id,
+          nombre: personasPorId[persona.id]
+            ? personasPorId[persona.id].nombre
+            : persona.id,
+          area: perfilesPorId[persona.id]
+            ? perfilesPorId[persona.id].area
+            : "",
+          vista: vista,
+          vistoEn: registro.vistoEn || registro.actualizado || "",
+          completada: completada
+        };
+      });
+      const vistos = destinatarios.filter(function(persona) {
+        return persona.vista;
+      });
+      const pendientes = destinatarios.filter(function(persona) {
+        return !persona.vista;
+      });
+
+      return {
+        id: item.id,
+        tipo: item.tipo,
+        titulo: item.titulo,
+        descripcion: item.descripcion,
+        fecha: item.fecha,
+        enlace: item.enlace,
+        publicado: item.publicado,
+        creadoPor: item.creadoPor,
+        creadoPorNombre: personasPorId[item.creadoPor]
+          ? personasPorId[item.creadoPor].nombre
+          : item.creadoPor,
+        alcance: item.alcance || (esGlobal ? "TODOS" : "DIRIGIDO"),
+        total: destinatarios.length,
+        totalVistos: vistos.length,
+        totalPendientes: pendientes.length,
+        vistos: vistos,
+        pendientes: pendientes
+      };
+    })
+    .sort(function(a, b) {
+      return String(b.publicado).localeCompare(String(a.publicado));
+    });
+}
+
+
+function listarProgresoContenidoServidor_() {
+  const hoja = obtenerHojaProgresoServidores_();
+  const progreso = {};
+
+  if (hoja.getLastRow() < 2) {
+    return progreso;
+  }
+
+  hoja.getRange(2, 1, hoja.getLastRow() - 1, 6)
+    .getValues()
+    .forEach(function(fila) {
+      const servidorId = normalizarIdServidor_(fila[0]);
+      const contenidoId = String(fila[1] || "").trim().toUpperCase();
+
+      if (servidorId && contenidoId) {
+        progreso[servidorId + "|" + contenidoId] = {
+          completada: valorActivoServidor_(fila[2]),
+          actualizado: formatearFechaHoraContenidoServidor_(fila[3]),
+          vista: valorActivoServidor_(fila[4]),
+          vistoEn: formatearFechaHoraContenidoServidor_(fila[5])
+        };
+      }
+    });
+
+  return progreso;
+}
+
+
 function listarNotificacionesGestionServidor_(
   servidorId,
   perfil,
@@ -678,17 +1016,27 @@ function listarNotificacionesGestionServidor_(
 
   listarContenidoServidor_(servidorId)
     .filter(function(contenido) {
-      return ["AVISO", "PREDICACION"].indexOf(contenido.tipo) >= 0;
+      return ["AVISO", "PREDICACION", "ACTIVIDAD"]
+        .indexOf(contenido.tipo) >= 0;
     })
     .forEach(function(contenido) {
       const esPredicacion = contenido.tipo === "PREDICACION";
+      const esActividad = contenido.tipo === "ACTIVIDAD";
       agregarNotificacionGestionServidor_(notificaciones, leidas, {
         id: contenido.tipo + "_" + contenido.id,
         tipo: contenido.tipo,
-        titulo: esPredicacion ? "Nueva predicación" : "Nuevo aviso",
+        titulo: esPredicacion
+          ? "Nueva predicación"
+          : esActividad
+            ? "Nueva actividad"
+            : "Nuevo aviso",
         descripcion: contenido.titulo,
         fecha: fechaHoraGestionServidor_(contenido.publicado) || contenido.fecha,
-        destino: esPredicacion ? "predicacionesServidor" : "avisosServidor"
+        destino: esPredicacion
+          ? "predicacionesServidor"
+          : esActividad
+            ? "actividadesServidor"
+            : "avisosServidor"
       });
     });
 
@@ -786,6 +1134,76 @@ function actualizarOrganizacionServidor(token, datos) {
 }
 
 
+function actualizarSaludServidor(token, datos) {
+  const sesion = resolverSesionServidor_(token);
+
+  if (!sesion) {
+    return { ok: false, mensaje: "La sesión terminó." };
+  }
+
+  const perfilActor = obtenerPerfilGestionServidor_(sesion.identidad.id);
+
+  if (!tieneRolGestionServidor_(perfilActor, "ADMINISTRADOR")) {
+    throw new Error("Sólo el administrador puede modificar información médica.");
+  }
+
+  const entrada = datos || {};
+  const servidorId = normalizarIdServidor_(entrada.servidorId);
+
+  if (!obtenerIdentidadServidor_(servidorId)) {
+    throw new Error("El servidor seleccionado no existe.");
+  }
+
+  const condicionMedica = limpiarDatoSaludGestionServidor_(
+    entrada.condicionMedica
+  );
+  const alergias = limpiarDatoSaludGestionServidor_(entrada.alergias);
+  const enfermedades = limpiarDatoSaludGestionServidor_(entrada.enfermedades);
+  const hoja = obtenerHojaOrganizacionServidores_();
+  const fila = buscarFilaPorIdGestionServidor_(hoja, servidorId);
+
+  if (fila) {
+    hoja.getRange(fila, 6).setValue(new Date());
+    hoja.getRange(fila, 7, 1, 3).setValues([[
+      condicionMedica,
+      alergias,
+      enfermedades
+    ]]);
+  } else {
+    hoja.appendRow([
+      servidorId,
+      "SERVIDOR",
+      "",
+      "",
+      "SI",
+      new Date(),
+      condicionMedica,
+      alergias,
+      enfermedades
+    ]);
+  }
+
+  return {
+    ok: true,
+    mensaje: "Información médica actualizada."
+  };
+}
+
+
+function limpiarDatoSaludGestionServidor_(valor) {
+  return String(valor || "").trim().slice(0, 500);
+}
+
+
+function serializarSaludGestionServidor_(perfil) {
+  return {
+    condicionMedica: String(perfil.condicionMedica || "").trim(),
+    alergias: String(perfil.alergias || "").trim(),
+    enfermedades: String(perfil.enfermedades || "").trim()
+  };
+}
+
+
 function obtenerHojaOrganizacionServidores_() {
   return obtenerHojaGestionServidor_(GESTION_HOJA_ORGANIZACION, [
     "SERVIDOR_ID",
@@ -793,7 +1211,10 @@ function obtenerHojaOrganizacionServidores_() {
     "AREA",
     "CAPITAN_ID",
     "ACTIVO",
-    "ACTUALIZADO"
+    "ACTUALIZADO",
+    "CONDICION_MEDICA",
+    "ALERGIAS",
+    "ENFERMEDADES"
   ]);
 }
 
@@ -1059,6 +1480,8 @@ function obtenerHojaGestionServidor_(nombre, encabezados) {
     hoja = libro.insertSheet(nombre);
     hoja.appendRow(encabezados);
     hoja.setFrozenRows(1);
+  } else {
+    hoja.getRange(1, 1, 1, encabezados.length).setValues([encabezados]);
   }
 
   return hoja;
@@ -1277,7 +1700,8 @@ function listarPersonasGestionServidor_() {
   return lista.map(function(persona) {
     return {
       id: normalizarIdServidor_(persona.id),
-      nombre: String(persona.nombre || "").trim()
+      nombre: String(persona.nombre || "").trim(),
+      ahorro: Number(persona.pagado || 0)
     };
   }).filter(function(persona) {
     return persona.id && persona.nombre;
@@ -1302,7 +1726,7 @@ function indexarPerfilesGestionServidor_(personas) {
   const configurados = {};
 
   if (hoja.getLastRow() >= 2) {
-    hoja.getRange(2, 1, hoja.getLastRow() - 1, 6)
+    hoja.getRange(2, 1, hoja.getLastRow() - 1, 9)
       .getValues()
       .forEach(function(fila) {
         const id = normalizarIdServidor_(fila[0]);
@@ -1313,7 +1737,10 @@ function indexarPerfilesGestionServidor_(personas) {
             roles: normalizarRolesGestionServidor_(fila[1]),
             area: String(fila[2] || "").trim(),
             capitanId: normalizarIdServidor_(fila[3]),
-            activo: valorActivoServidor_(fila[4])
+            activo: valorActivoServidor_(fila[4]),
+            condicionMedica: String(fila[6] || "").trim(),
+            alergias: String(fila[7] || "").trim(),
+            enfermedades: String(fila[8] || "").trim()
           };
         }
       });
@@ -1325,7 +1752,10 @@ function indexarPerfilesGestionServidor_(personas) {
       roles: ["SERVIDOR"],
       area: "",
       capitanId: "",
-      activo: true
+      activo: true,
+      condicionMedica: "",
+      alergias: "",
+      enfermedades: ""
     };
   });
 
@@ -1344,18 +1774,24 @@ function obtenerPerfilGestionServidor_(servidorId) {
       roles: ["SERVIDOR"],
       area: "",
       capitanId: "",
-      activo: true
+      activo: true,
+      condicionMedica: "",
+      alergias: "",
+      enfermedades: ""
     };
   }
 
-  const valores = hoja.getRange(fila, 1, 1, 6).getValues()[0];
+  const valores = hoja.getRange(fila, 1, 1, 9).getValues()[0];
 
   return {
     servidorId: id,
     roles: normalizarRolesGestionServidor_(valores[1]),
     area: String(valores[2] || "").trim(),
     capitanId: normalizarIdServidor_(valores[3]),
-    activo: valorActivoServidor_(valores[4])
+    activo: valorActivoServidor_(valores[4]),
+    condicionMedica: String(valores[6] || "").trim(),
+    alergias: String(valores[7] || "").trim(),
+    enfermedades: String(valores[8] || "").trim()
   };
 }
 

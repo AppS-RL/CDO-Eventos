@@ -89,7 +89,8 @@ function marcarContenidoPushExistente_() {
   hoja.getRange(2, 1, hoja.getLastRow() - 1, 2).getDisplayValues().forEach(function(fila) {
     const id = String(fila[0] || "").trim().toUpperCase();
     const tipo = String(fila[1] || "").trim().toUpperCase();
-    if (id && !enviados[id] && ["AVISO", "PREDICACION"].indexOf(tipo) >= 0) {
+    if (id && !enviados[id] &&
+        ["AVISO", "PREDICACION", "ACTIVIDAD"].indexOf(tipo) >= 0) {
       obtenerHojaEnviosPush_().appendRow([id, tipo, 0, new Date()]);
       enviados[id] = true;
     }
@@ -116,7 +117,7 @@ function sincronizarPushContenidoServidores() {
     });
 
     if (!id || enviados[id] || activo === "NO" || !vigente ||
-        ["AVISO", "PREDICACION"].indexOf(tipo) < 0) {
+        ["AVISO", "PREDICACION", "ACTIVIDAD"].indexOf(tipo) < 0) {
       return;
     }
 
@@ -124,8 +125,16 @@ function sincronizarPushContenidoServidores() {
     const ids = destinatario === "TODOS"
       ? personas.map(function(persona) { return persona.id; })
       : destinatario.split(",").map(normalizarIdServidor_).filter(Boolean);
-    const titulo = tipo === "PREDICACION" ? "Nueva predicación" : "Nuevo aviso";
-    const destino = tipo === "PREDICACION" ? "predicacionesServidor" : "avisosServidor";
+    const titulo = tipo === "PREDICACION"
+      ? "Nueva predicación"
+      : tipo === "ACTIVIDAD"
+        ? "Nueva actividad"
+        : "Nuevo aviso";
+    const destino = tipo === "PREDICACION"
+      ? "predicacionesServidor"
+      : tipo === "ACTIVIDAD"
+        ? "actividadesServidor"
+        : "avisosServidor";
 
     enviarPushServidoresSeguro_(ids, {
       id: tipo + "_" + id,

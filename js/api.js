@@ -253,6 +253,14 @@ async function marcarActividadServidorAPI(
 }
 
 
+async function marcarContenidoVistoServidorAPI(token, contenidoId) {
+    return llamarAPI("marcarContenidoVistoServidor", {
+        token: token,
+        contenidoId: contenidoId
+    });
+}
+
+
 async function obtenerGestionServidorAPI(token) {
     return llamarAPI("obtenerGestionServidor", {
         token: token
@@ -325,6 +333,14 @@ async function publicarAvisoAreaServidorAPI(token, datos) {
 }
 
 
+async function publicarContenidoDirigidoServidorAPI(token, datos) {
+    return llamarAPI("publicarContenidoDirigidoServidor", {
+        token: token,
+        datos: datos
+    });
+}
+
+
 async function marcarNotificacionesServidorAPI(token, notificacionIds) {
     return llamarAPI("marcarNotificacionesServidor", {
         token: token,
@@ -344,6 +360,14 @@ async function registrarPushServidorAPI(token, tokenDispositivo, dispositivo) {
 
 async function actualizarOrganizacionServidorAPI(token, datos) {
     return llamarAPI("actualizarOrganizacionServidor", {
+        token: token,
+        datos: datos
+    });
+}
+
+
+async function actualizarSaludServidorAPI(token, datos) {
+    return llamarAPI("actualizarSaludServidor", {
         token: token,
         datos: datos
     });

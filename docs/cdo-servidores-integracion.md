@@ -30,6 +30,24 @@ case "marcarNotificacionesServidor":
     datos.token,
     datos.notificacionIds
   );
+
+case "marcarContenidoVistoServidor":
+  return marcarContenidoVistoServidor(
+    datos.token,
+    datos.contenidoId
+  );
+
+case "publicarContenidoDirigidoServidor":
+  return publicarContenidoDirigidoServidor(
+    datos.token,
+    datos.datos
+  );
+
+case "actualizarSaludServidor":
+  return actualizarSaludServidor(
+    datos.token,
+    datos.datos
+  );
 ```
 
 Después se debe crear una nueva versión del despliegue web de Apps Script. La
@@ -39,6 +57,21 @@ texto legible.
 La primera consulta de gestión también crea `NotificacionesLeidasServidores`,
 que sólo conserva el usuario, el identificador de la notificación y la fecha de
 lectura.
+
+Las predicaciones y actividades dirigidas guardan sus destinatarios en
+`ContenidoServidores`. La apertura y el estado de finalización se registran en
+`ProgresoServidores`; esto permite mostrar a pastores y administradores las
+listas de quienes ya abrieron cada publicación y quienes siguen pendientes.
+
+El pase de lista está autorizado únicamente para pastores, administradores y
+`SERVIDOR-0030` (Nadine Odette Luis Barbosa). Los capitanes conservan la
+gestión de permisos y avisos de su equipo, pero no registran asistencia ni
+acceden al directorio general.
+
+El ahorro propio se obtiene del saldo existente del servidor. La información
+médica no se entrega al perfil individual: sólo se incluye en el directorio
+general consultado por pastores y administrador. Únicamente el administrador
+puede modificar condiciones médicas, alergias y enfermedades.
 
 ## Notificaciones push
 

@@ -352,8 +352,12 @@ function mostrarPanelServidor(
     const coberturasPendientes = (gestion?.coberturas || [])
         .filter(item => item.coberturaEstado === "PENDIENTE")
         .length;
-    const puedeSupervisar = perfil.roles.some(rol =>
+    const puedeSupervisar = Boolean(gestion?.puedeTomarAsistencia) || perfil.roles.some(rol =>
         ["CAPITAN", "PASTOR", "ADMINISTRADOR"].includes(rol)
+    );
+    const puedePublicarContenido = perfil.roles.includes("PASTOR");
+    const puedeVerSeguimientoContenido = perfil.roles.some(rol =>
+        ["PASTOR", "ADMINISTRADOR"].includes(rol)
     );
 
     app.innerHTML = `
@@ -394,6 +398,7 @@ function mostrarPanelServidor(
                     </p>
                     <div class="servidores-resumen-datos">
                         ${crearInsigniasRolesServidor(perfil.roles)}
+                        <span class="servidores-ahorro">💰 Mi ahorro: <strong>${formatearMonedaServidor(perfil.ahorro)}</strong></span>
                         <span class="servidores-faltas ${claseSemaforoPermisosServidor(perfil.permisosUsados)}">
                             ${Number(perfil.permisosUsados || 0)} de ${Number(perfil.limitePermisos || 6)} permisos usados
                         </span>
@@ -448,6 +453,12 @@ function mostrarPanelServidor(
                             <p>Marca cada actividad cuando la termines</p>
                         </div>
                     </div>
+                    ${(puedePublicarContenido || puedeVerSeguimientoContenido) ? `
+                        <div class="servidores-acciones-publicacion">
+                            ${puedePublicarContenido ? `<button type="button" data-publicar-contenido="ACTIVIDAD">＋ Publicar actividad</button>` : ""}
+                            ${puedeVerSeguimientoContenido ? `<button type="button" data-ver-seguimiento-contenido>📊 Ver seguimiento</button>` : ""}
+                        </div>
+                    ` : ""}
                     ${renderizarListaContenidoServidor(
                         actividades,
                         "No tienes actividades pendientes.",
@@ -463,6 +474,12 @@ function mostrarPanelServidor(
                             <p>Material de preparación y seguimiento</p>
                         </div>
                     </div>
+                    ${(puedePublicarContenido || puedeVerSeguimientoContenido) ? `
+                        <div class="servidores-acciones-publicacion">
+                            ${puedePublicarContenido ? `<button type="button" data-publicar-contenido="PREDICACION">＋ Publicar predicación</button>` : ""}
+                            ${puedeVerSeguimientoContenido ? `<button type="button" data-ver-seguimiento-contenido>📊 Ver seguimiento</button>` : ""}
+                        </div>
+                    ` : ""}
                     ${renderizarListaContenidoServidor(
                         predicaciones,
                         "No tienes predicaciones asignadas.",
@@ -516,6 +533,28 @@ function mostrarPanelServidor(
                 )
             );
         });
+
+    document
+        .querySelectorAll("[data-contenido-ver]")
+        .forEach(boton => {
+            boton.addEventListener(
+                "click",
+                () => abrirPublicacionServidor(boton)
+            );
+        });
+
+    document.querySelectorAll("[data-publicar-contenido]").forEach(boton => {
+        boton.addEventListener("click", () => {
+            abrirPublicadorContenidoServidor(boton.dataset.publicarContenido);
+        });
+    });
+
+    document.querySelectorAll("[data-ver-seguimiento-contenido]").forEach(boton => {
+        boton.addEventListener("click", () => {
+            actualizarVistaModuloServidor("gestionEquipoServidor");
+            actualizarPanelGestionServidor("seguimientoContenido");
+        });
+    });
 
     configurarEventosNotificacionesServidor();
     configurarEventosGestionServidor(gestion);
@@ -601,6 +640,19 @@ function actualizarPanelGestionServidor(panel, moverVista = true) {
 }
 
 
+function abrirPublicadorContenidoServidor(tipo) {
+    actualizarVistaModuloServidor("gestionEquipoServidor");
+    actualizarPanelGestionServidor("publicarContenido");
+    const formulario = document.getElementById("formContenidoDirigidoServidor");
+    if (formulario?.elements?.tipo) {
+        formulario.elements.tipo.value = tipo === "ACTIVIDAD"
+            ? "ACTIVIDAD"
+            : "PREDICACION";
+    }
+    formulario?.querySelector("input[name='titulo']")?.focus();
+}
+
+
 function crearAccesoModuloServidor(
     icono,
     titulo,
@@ -632,20 +684,29 @@ function combinarNotificacionesServidor(notificacionesGestion, contenidos) {
     const existentes = new Set(notificaciones.map(item => item.id));
 
     contenidos
-        .filter(item => ["AVISO", "PREDICACION"].includes(item.tipo))
+        .filter(item => ["AVISO", "PREDICACION", "ACTIVIDAD"].includes(item.tipo))
         .forEach(item => {
             const id = item.notificacionId || `${item.tipo}_${item.id}`;
 
             if (existentes.has(id)) return;
 
             const esPredicacion = item.tipo === "PREDICACION";
+            const esActividad = item.tipo === "ACTIVIDAD";
             notificaciones.push({
                 id: id,
                 tipo: item.tipo,
-                titulo: esPredicacion ? "Nueva predicación" : "Nuevo aviso",
+                titulo: esPredicacion
+                    ? "Nueva predicación"
+                    : esActividad
+                        ? "Nueva actividad"
+                        : "Nuevo aviso",
                 descripcion: item.titulo,
                 fecha: item.publicado || item.fecha,
-                destino: esPredicacion ? "predicacionesServidor" : "avisosServidor",
+                destino: esPredicacion
+                    ? "predicacionesServidor"
+                    : esActividad
+                        ? "actividadesServidor"
+                        : "avisosServidor",
                 leida: Boolean(item.notificacionLeida)
             });
             existentes.add(id);
@@ -727,7 +788,8 @@ function iconoNotificacionServidor(tipo) {
         PERMISO: "🗓️",
         COBERTURA: "🤝",
         AVISO: "📣",
-        PREDICACION: "📖"
+        PREDICACION: "📖",
+        ACTIVIDAD: "✅"
     }[tipo] || "🔔";
 }
 
@@ -1207,21 +1269,30 @@ function renderizarListaContenidoServidor(
     }
 
     return contenidos
-        .map(item => `
+        .map(item => {
+            const idDetalle = "detalleContenidoServidor-" + String(item.id)
+                .replace(/[^a-zA-Z0-9_-]/g, "");
+
+            return `
             <article class="servidores-contenido ${item.completada ? "completado" : ""}">
                 <div class="servidores-contenido-cuerpo">
                     ${crearFechaContenidoServidor(item.fecha)}
                     <h3>${escaparHTML(item.titulo)}</h3>
-                    ${
-                        item.descripcion
-                            ? `<p>${escaparHTML(item.descripcion)}</p>`
-                            : ""
-                    }
-                    ${crearEnlaceContenidoServidor(item.enlace, "Abrir material")}
-                </div>
-                ${
-                    permiteCompletar
-                        ? `
+                    ${permiteCompletar ? `
+                        <button
+                            class="servidores-abrir-publicacion"
+                            type="button"
+                            data-contenido-ver="${escaparHTML(item.id)}"
+                            data-contenido-detalle="${idDetalle}"
+                            data-vista="${Boolean(item.vista)}"
+                            aria-expanded="false"
+                            aria-controls="${idDetalle}"
+                        >
+                            ${item.vista ? "Abrir publicación" : "Ver publicación"}
+                        </button>
+                        <div id="${idDetalle}" class="servidores-publicacion-detalle" hidden>
+                            ${item.descripcion ? `<p>${escaparHTML(item.descripcion)}</p>` : ""}
+                            ${crearEnlaceContenidoServidor(item.enlace, "Abrir material")}
                             <button
                                 class="servidores-completar"
                                 type="button"
@@ -1231,12 +1302,60 @@ function renderizarListaContenidoServidor(
                             >
                                 ${item.completada ? "✓ Completada" : "Marcar como completada"}
                             </button>
-                        `
-                        : ""
-                }
+                        </div>
+                    ` : `
+                        ${item.descripcion ? `<p>${escaparHTML(item.descripcion)}</p>` : ""}
+                        ${crearEnlaceContenidoServidor(item.enlace, "Abrir material")}
+                    `}
+                </div>
             </article>
-        `)
+        `;
+        })
         .join("");
+}
+
+
+async function abrirPublicacionServidor(boton) {
+    const detalle = document.getElementById(boton.dataset.contenidoDetalle);
+    if (!detalle) return;
+
+    if (!detalle.hidden) {
+        detalle.hidden = true;
+        boton.setAttribute("aria-expanded", "false");
+        boton.textContent = boton.dataset.vista === "true"
+            ? "Abrir publicación"
+            : "Ver publicación";
+        return;
+    }
+
+    const textoAnterior = boton.textContent;
+    boton.disabled = true;
+    boton.textContent = "Abriendo...";
+
+    try {
+        if (boton.dataset.vista !== "true") {
+            const sesion = obtenerSesionServidorGuardada();
+            const resultado = await marcarContenidoVistoServidorAPI(
+                sesion.token,
+                boton.dataset.contenidoVer
+            );
+            if (!resultado?.ok) {
+                throw new Error(
+                    resultado?.mensaje || "No fue posible abrir la publicación."
+                );
+            }
+            boton.dataset.vista = "true";
+        }
+
+        detalle.hidden = false;
+        boton.setAttribute("aria-expanded", "true");
+        boton.textContent = "Ocultar publicación";
+    } catch (error) {
+        alert(error.message || "No fue posible abrir la publicación.");
+        boton.textContent = textoAnterior;
+    } finally {
+        boton.disabled = false;
+    }
 }
 
 
@@ -1426,11 +1545,17 @@ function renderizarGestionEquipoServidor(gestion) {
     const esCapitan = roles.includes("CAPITAN");
     const esPastor = roles.includes("PASTOR");
     const esAdmin = roles.includes("ADMINISTRADOR");
+    const puedeTomarAsistencia = Boolean(gestion?.puedeTomarAsistencia);
+    const puedeGestionRegular = esCapitan || esPastor || esAdmin;
+    const puedeVerDirectorioGeneral = esPastor || esAdmin;
+    const puedeGestionarContenido = esPastor || esAdmin;
     const puedeAprobarPermisos = Boolean(perfil.puedeAprobarPermisos);
     const solicitudes = gestion?.solicitudesAprobacion || [];
     const equipo = gestion?.equipo || [];
     const hoy = new Date().toISOString().slice(0, 10);
     const servicios = (gestion?.servicios || []).filter(item => item.fecha >= hoy);
+    const audiencias = gestion?.audienciasContenido || { equipos: [], personas: [] };
+    const publicaciones = gestion?.publicacionesSeguimiento || [];
 
     return `
         <section id="gestionEquipoServidor" class="servidores-seccion">
@@ -1443,13 +1568,15 @@ function renderizarGestionEquipoServidor(gestion) {
             </div>
 
             <nav class="servidores-gestion-menu" aria-label="Herramientas de gestión">
-                <button type="button" data-ir-gestion-panel="aprobaciones">✅ Aprobaciones${solicitudes.length ? ` (${solicitudes.length})` : ""}</button>
-                ${(esCapitan || esAdmin) ? `<button type="button" data-ir-gestion-panel="asistencia">📝 Pase de lista</button>` : ""}
-                <button type="button" data-ir-gestion-panel="avisos">📣 Publicar aviso</button>
-                <button type="button" data-ir-gestion-panel="directorio">👥 Servidores</button>
+                ${puedeGestionRegular ? `<button type="button" data-ir-gestion-panel="aprobaciones">✅ Aprobaciones${solicitudes.length ? ` (${solicitudes.length})` : ""}</button>` : ""}
+                ${puedeTomarAsistencia ? `<button type="button" data-ir-gestion-panel="asistencia">📝 Pase de lista</button>` : ""}
+                ${puedeGestionRegular ? `<button type="button" data-ir-gestion-panel="avisos">📣 Publicar aviso</button>` : ""}
+                ${esPastor ? `<button type="button" data-ir-gestion-panel="publicarContenido">📚 Publicar tarea</button>` : ""}
+                ${puedeGestionarContenido ? `<button type="button" data-ir-gestion-panel="seguimientoContenido">📊 Seguimiento</button>` : ""}
+                ${puedeVerDirectorioGeneral ? `<button type="button" data-ir-gestion-panel="directorio">👥 Servidores</button>` : ""}
             </nav>
 
-            <div class="servidores-subseccion servidores-panel-gestion" data-gestion-panel="aprobaciones">
+            ${puedeGestionRegular ? `<div class="servidores-subseccion servidores-panel-gestion" data-gestion-panel="aprobaciones">
                 <h3>Solicitudes por revisar</h3>
                 ${solicitudes.length ? `
                     <div class="servidores-lista-gestion">
@@ -1473,9 +1600,9 @@ function renderizarGestionEquipoServidor(gestion) {
                         `).join("")}
                     </div>
                 ` : crearEstadoVacioServidor("No hay permisos pendientes de revisión.")}
-            </div>
+            </div>` : ""}
 
-            ${(esCapitan || esAdmin) ? `
+            ${puedeTomarAsistencia ? `
                 <div class="servidores-subseccion servidores-panel-gestion" data-gestion-panel="asistencia">
                     <h3>Pase de lista</h3>
                     ${equipo.length && servicios.length ? `
@@ -1502,7 +1629,7 @@ function renderizarGestionEquipoServidor(gestion) {
                 </div>
             ` : ""}
 
-            <div class="servidores-subseccion servidores-panel-gestion" data-gestion-panel="avisos">
+            ${puedeGestionRegular ? `<div class="servidores-subseccion servidores-panel-gestion" data-gestion-panel="avisos">
                 <h3>Publicar aviso</h3>
                 <form id="formAvisoAreaServidor" class="servidores-formulario">
                     <label>
@@ -1519,23 +1646,188 @@ function renderizarGestionEquipoServidor(gestion) {
                     </label>
                     <button class="servidores-accion-primaria" type="submit">Publicar aviso</button>
                 </form>
-            </div>
+            </div>` : ""}
 
-            <div class="servidores-subseccion servidores-panel-gestion" data-gestion-panel="directorio">
+            ${esPastor ? `
+                <div class="servidores-subseccion servidores-panel-gestion" data-gestion-panel="publicarContenido">
+                    <h3>Publicar predicación o actividad</h3>
+                    <p class="servidores-ayuda">Sólo las personas seleccionadas podrán ver esta publicación.</p>
+                    <form id="formContenidoDirigidoServidor" class="servidores-formulario">
+                        <label>
+                            Tipo de tarea
+                            <select name="tipo" required>
+                                <option value="PREDICACION">Predicación</option>
+                                <option value="ACTIVIDAD">Actividad</option>
+                            </select>
+                        </label>
+                        <label>
+                            Fecha límite
+                            <input name="fecha" type="date" min="${hoy}" required>
+                        </label>
+                        <label class="servidores-campo-completo">
+                            Título
+                            <input name="titulo" required maxlength="100" placeholder="Ej. Escuchar: El corazón de un servidor">
+                        </label>
+                        <label class="servidores-campo-completo">
+                            Indicación o tarea
+                            <textarea name="descripcion" rows="4" required placeholder="Ej. Tienen de tarea escuchar esta predicación antes de la fecha límite."></textarea>
+                        </label>
+                        <label class="servidores-campo-completo">
+                            Enlace <small>(opcional)</small>
+                            <input name="enlace" type="url" inputmode="url" placeholder="https://...">
+                        </label>
+                        <label class="servidores-campo-completo">
+                            ¿Para quién es?
+                            <select name="alcance" data-selector-alcance-contenido required>
+                                <option value="TODOS">Todos los servidores</option>
+                                <option value="EQUIPO">Un equipo</option>
+                                <option value="SERVIDORES">Servidores específicos</option>
+                            </select>
+                        </label>
+                        <label class="servidores-campo-completo" data-audiencia-contenido="EQUIPO" hidden>
+                            Equipo
+                            <select name="equipo">
+                                <option value="">Selecciona un equipo</option>
+                                ${audiencias.equipos.map(equipo => `<option value="${escaparHTML(equipo)}">${escaparHTML(equipo)}</option>`).join("")}
+                            </select>
+                        </label>
+                        <fieldset class="servidores-campo-completo servidores-selector-personas" data-audiencia-contenido="SERVIDORES" hidden>
+                            <legend>Selecciona uno o varios servidores</legend>
+                            ${audiencias.personas.length ? audiencias.personas.map(persona => `
+                                <label>
+                                    <input type="checkbox" name="servidorIds" value="${escaparHTML(persona.id)}">
+                                    <span><strong>${escaparHTML(persona.nombre)}</strong><small>${escaparHTML(persona.area || "Área pendiente")}</small></span>
+                                </label>
+                            `).join("") : `<p class="servidores-ayuda">No hay servidores activos.</p>`}
+                        </fieldset>
+                        <button class="servidores-accion-primaria" type="submit">Publicar tarea</button>
+                    </form>
+                </div>
+            ` : ""}
+
+            ${puedeGestionarContenido ? `
+                <div class="servidores-subseccion servidores-panel-gestion" data-gestion-panel="seguimientoContenido">
+                    <h3>Seguimiento de publicaciones</h3>
+                    <p class="servidores-ayuda">Abre una publicación para consultar quién ya la vio y quién sigue pendiente.</p>
+                    ${renderizarSeguimientoPublicacionesServidor(publicaciones)}
+                </div>
+            ` : ""}
+
+            ${puedeVerDirectorioGeneral ? `<div class="servidores-subseccion servidores-panel-gestion" data-gestion-panel="directorio">
                 <h3>Información de servidores</h3>
                 ${equipo.length ? `
                     <div class="servidores-directorio">
                         ${equipo.map(persona => `
-                            <article>
+                            <article class="servidores-directorio-persona">
                                 <div><strong>${escaparHTML(persona.nombre)}</strong><small>${escaparHTML(persona.id)}</small></div>
                                 <span>${escaparHTML(persona.area || "Área pendiente")}</span>
                                 <em class="${claseSemaforoPermisosServidor(persona.permisosUsados)}">${persona.permisosUsados} / ${persona.limitePermisos} permisos · ${persona.faltasSinPermiso} faltas sin permiso</em>
+                                ${renderizarSaludDirectorioServidor(persona)}
+                                ${esAdmin ? `
+                                    <button
+                                        type="button"
+                                        class="servidores-accion-secundaria servidores-editar-salud"
+                                        data-editar-salud="salud-${escaparHTML(persona.id)}"
+                                        aria-expanded="false"
+                                    >Agregar o modificar información médica</button>
+                                    <form id="salud-${escaparHTML(persona.id)}" class="servidores-formulario servidores-formulario-salud" data-form-salud-servidor hidden>
+                                        <input type="hidden" name="servidorId" value="${escaparHTML(persona.id)}">
+                                        <label class="servidores-campo-completo">
+                                            Condición médica
+                                            <textarea name="condicionMedica" rows="2" maxlength="500" placeholder="Ej. Requiere cuidados especiales">${escaparHTML(persona.salud?.condicionMedica || "")}</textarea>
+                                        </label>
+                                        <label class="servidores-campo-completo">
+                                            Alergias
+                                            <textarea name="alergias" rows="2" maxlength="500" placeholder="Ej. Penicilina, cacahuate">${escaparHTML(persona.salud?.alergias || "")}</textarea>
+                                        </label>
+                                        <label class="servidores-campo-completo">
+                                            Enfermedades o padecimientos
+                                            <textarea name="enfermedades" rows="2" maxlength="500" placeholder="Ej. Asma, diabetes">${escaparHTML(persona.salud?.enfermedades || "")}</textarea>
+                                        </label>
+                                        <button class="servidores-accion-primaria" type="submit">Guardar información médica</button>
+                                    </form>
+                                ` : ""}
                             </article>
                         `).join("")}
                     </div>
                 ` : crearEstadoVacioServidor("Todavía no hay integrantes asignados a tu alcance.")}
-            </div>
+            </div>` : ""}
         </section>
+    `;
+}
+
+
+function renderizarSaludDirectorioServidor(persona) {
+    const salud = persona?.salud || {};
+    const condicion = String(salud.condicionMedica || "").trim();
+    const alergias = String(salud.alergias || "").trim();
+    const enfermedades = String(salud.enfermedades || "").trim();
+    const tieneInformacion = condicion || alergias || enfermedades;
+
+    return `
+        <div class="servidores-salud-resumen ${tieneInformacion ? "con-datos" : "sin-datos"}">
+            <strong>Información médica</strong>
+            ${tieneInformacion ? `
+                ${condicion ? `<p><b>Condición:</b> ${escaparHTML(condicion)}</p>` : ""}
+                ${alergias ? `<p><b>Alergias:</b> ${escaparHTML(alergias)}</p>` : ""}
+                ${enfermedades ? `<p><b>Enfermedades:</b> ${escaparHTML(enfermedades)}</p>` : ""}
+            ` : `<p>Sin información médica registrada.</p>`}
+        </div>
+    `;
+}
+
+
+function renderizarSeguimientoPublicacionesServidor(publicaciones = []) {
+    if (!publicaciones.length) {
+        return crearEstadoVacioServidor("Todavía no hay predicaciones o actividades publicadas.");
+    }
+
+    return `
+        <div class="servidores-lista-seguimiento">
+            ${publicaciones.map(publicacion => {
+                const idDetalle = "seguimiento-" + String(publicacion.id)
+                    .replace(/[^a-zA-Z0-9_-]/g, "");
+                const porcentaje = publicacion.total
+                    ? Math.round((publicacion.totalVistos / publicacion.total) * 100)
+                    : 0;
+                return `
+                    <article class="servidores-seguimiento">
+                        <div class="servidores-tarjeta-cabecera">
+                            <span class="servidores-estado estado-azul">${publicacion.tipo === "PREDICACION" ? "Predicación" : "Actividad"}</span>
+                            ${crearFechaContenidoServidor(publicacion.fecha)}
+                        </div>
+                        <h3>${escaparHTML(publicacion.titulo)}</h3>
+                        <p>${escaparHTML(publicacion.descripcion)}</p>
+                        <small>${escaparHTML(publicacion.alcance || "Dirigido")} · ${Number(publicacion.total || 0)} destinatarios</small>
+                        <div class="servidores-metricas-seguimiento">
+                            <span><strong>${Number(publicacion.totalVistos || 0)}</strong> ya la vieron</span>
+                            <span><strong>${Number(publicacion.totalPendientes || 0)}</strong> pendientes</span>
+                            <span><strong>${porcentaje}%</strong> alcance</span>
+                        </div>
+                        <div class="servidores-barra-seguimiento" aria-label="${porcentaje}% ya la vio">
+                            <span style="width:${porcentaje}%"></span>
+                        </div>
+                        <button
+                            type="button"
+                            class="servidores-accion-secundaria"
+                            data-seguimiento-toggle="${idDetalle}"
+                            aria-expanded="false"
+                            aria-controls="${idDetalle}"
+                        >Ver listas</button>
+                        <div id="${idDetalle}" class="servidores-listas-lectura" hidden>
+                            <section>
+                                <h4>Ya la vieron (${Number(publicacion.totalVistos || 0)})</h4>
+                                ${publicacion.vistos.length ? `<ul>${publicacion.vistos.map(persona => `<li><strong>${escaparHTML(persona.nombre)}</strong><small>${escaparHTML(persona.area || "Sin área")}</small></li>`).join("")}</ul>` : `<p>Nadie la ha abierto todavía.</p>`}
+                            </section>
+                            <section>
+                                <h4>Pendientes (${Number(publicacion.totalPendientes || 0)})</h4>
+                                ${publicacion.pendientes.length ? `<ul>${publicacion.pendientes.map(persona => `<li><strong>${escaparHTML(persona.nombre)}</strong><small>${escaparHTML(persona.area || "Sin área")}</small></li>`).join("")}</ul>` : `<p>Todos la han visto.</p>`}
+                            </section>
+                        </div>
+                    </article>
+                `;
+            }).join("")}
+        </div>
     `;
 }
 
@@ -1586,6 +1878,15 @@ function formatearFechaBreveServidor(fecha) {
 }
 
 
+function formatearMonedaServidor(valor) {
+    return new Intl.NumberFormat("es-MX", {
+        style: "currency",
+        currency: "MXN",
+        minimumFractionDigits: 2
+    }).format(Number(valor || 0));
+}
+
+
 function configurarEventosGestionServidor(gestion) {
     if (!gestion) return;
 
@@ -1623,6 +1924,57 @@ function configurarEventosGestionServidor(gestion) {
     document
         .getElementById("formAvisoAreaServidor")
         ?.addEventListener("submit", publicarAvisoDesdePortalServidor);
+
+    document
+        .getElementById("formContenidoDirigidoServidor")
+        ?.addEventListener("submit", publicarContenidoDesdePortalServidor);
+
+    const selectorAlcance = document.querySelector(
+        "[data-selector-alcance-contenido]"
+    );
+    selectorAlcance?.addEventListener(
+        "change",
+        actualizarAudienciaContenidoServidor
+    );
+    if (selectorAlcance) actualizarAudienciaContenidoServidor({
+        currentTarget: selectorAlcance
+    });
+
+    document.querySelectorAll("[data-seguimiento-toggle]").forEach(boton => {
+        boton.addEventListener("click", () => {
+            const detalle = document.getElementById(
+                boton.dataset.seguimientoToggle
+            );
+            if (!detalle) return;
+            detalle.hidden = !detalle.hidden;
+            boton.setAttribute("aria-expanded", String(!detalle.hidden));
+            boton.textContent = detalle.hidden ? "Ver listas" : "Ocultar listas";
+        });
+    });
+
+    document.querySelectorAll("[data-editar-salud]").forEach(boton => {
+        boton.addEventListener("click", () => {
+            const formulario = document.getElementById(boton.dataset.editarSalud);
+            if (!formulario) return;
+            formulario.hidden = !formulario.hidden;
+            boton.setAttribute("aria-expanded", String(!formulario.hidden));
+            boton.textContent = formulario.hidden
+                ? "Agregar o modificar información médica"
+                : "Ocultar formulario";
+        });
+    });
+
+    document.querySelectorAll("[data-form-salud-servidor]").forEach(formulario => {
+        formulario.addEventListener("submit", guardarSaludDesdePortalServidor);
+    });
+}
+
+
+function actualizarAudienciaContenidoServidor(evento) {
+    const alcance = evento.currentTarget.value;
+    document.querySelectorAll("[data-audiencia-contenido]").forEach(bloque => {
+        bloque.hidden = bloque.dataset.audienciaContenido !== alcance;
+    });
 }
 
 
@@ -1701,6 +2053,61 @@ async function publicarAvisoDesdePortalServidor(evento) {
     await ejecutarAccionGestionServidor(boton, "Publicando...", async () => {
         const resultado = await publicarAvisoAreaServidorAPI(sesion.token, datos);
         if (!resultado?.ok) throw new Error(resultado?.mensaje || "No fue posible publicar el aviso.");
+        await cargarPanelServidor(sesion.servidor, sesion.token);
+    });
+}
+
+
+async function publicarContenidoDesdePortalServidor(evento) {
+    evento.preventDefault();
+    const formulario = evento.currentTarget;
+    const sesion = obtenerSesionServidorGuardada();
+    const boton = formulario.querySelector("button[type='submit']");
+    const datosFormulario = new FormData(formulario);
+    const datos = Object.fromEntries(datosFormulario.entries());
+    datos.servidorIds = datosFormulario.getAll("servidorIds");
+
+    if (datos.alcance === "SERVIDORES" && !datos.servidorIds.length) {
+        alert("Selecciona al menos un servidor.");
+        return;
+    }
+
+    await ejecutarAccionGestionServidor(boton, "Publicando...", async () => {
+        const resultado = await publicarContenidoDirigidoServidorAPI(
+            sesion.token,
+            datos
+        );
+        if (!resultado?.ok) {
+            throw new Error(
+                resultado?.mensaje || "No fue posible publicar la tarea."
+            );
+        }
+        alert(resultado.mensaje);
+        panelGestionActivoServidor = "seguimientoContenido";
+        await cargarPanelServidor(sesion.servidor, sesion.token);
+    });
+}
+
+
+async function guardarSaludDesdePortalServidor(evento) {
+    evento.preventDefault();
+    const formulario = evento.currentTarget;
+    const sesion = obtenerSesionServidorGuardada();
+    const boton = formulario.querySelector("button[type='submit']");
+    const datos = Object.fromEntries(new FormData(formulario).entries());
+
+    await ejecutarAccionGestionServidor(boton, "Guardando...", async () => {
+        const resultado = await actualizarSaludServidorAPI(
+            sesion.token,
+            datos
+        );
+        if (!resultado?.ok) {
+            throw new Error(
+                resultado?.mensaje || "No fue posible guardar la información médica."
+            );
+        }
+        alert(resultado.mensaje);
+        panelGestionActivoServidor = "directorio";
         await cargarPanelServidor(sesion.servidor, sesion.token);
     });
 }

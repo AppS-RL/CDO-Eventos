@@ -243,7 +243,7 @@ function obtenerContenidoServidor(token) {
   return {
     ok: true,
     contenidos: contenidos.map(function(contenido) {
-      const generaNotificacion = ["AVISO", "PREDICACION"]
+      const generaNotificacion = ["AVISO", "PREDICACION", "ACTIVIDAD"]
         .indexOf(contenido.tipo) >= 0;
       const notificacionId = generaNotificacion
         ? contenido.tipo + "_" + contenido.id
@@ -259,7 +259,12 @@ function obtenerContenidoServidor(token) {
         color: contenido.color,
         prenda: contenido.prenda,
         publicado: formatearFechaHoraContenidoServidor_(contenido.publicado),
-        completada: Boolean(progreso[contenido.id]),
+        completada: Boolean(
+          progreso[contenido.id] && progreso[contenido.id].completada
+        ),
+        vista: Boolean(
+          progreso[contenido.id] && progreso[contenido.id].vista
+        ),
         notificacionId: notificacionId,
         notificacionLeida: notificacionId
           ? Boolean(notificacionesLeidas[notificacionId])
@@ -327,6 +332,70 @@ function marcarActividadServidor(token, contenidoId, completada) {
 }
 
 
+function marcarContenidoVistoServidor(token, contenidoId) {
+  const sesion = resolverSesionServidor_(token);
+
+  if (!sesion) {
+    return { ok: false, mensaje: "La sesión terminó." };
+  }
+
+  const idContenido = String(contenidoId || "").trim().toUpperCase();
+  const contenido = listarContenidoServidor_(sesion.identidad.id)
+    .find(function(item) {
+      return item.id === idContenido;
+    });
+
+  if (
+    !contenido ||
+    ["ACTIVIDAD", "PREDICACION"].indexOf(contenido.tipo) === -1
+  ) {
+    return {
+      ok: false,
+      mensaje: "La publicación no está disponible."
+    };
+  }
+
+  const hoja = obtenerHojaProgresoServidores_();
+  const bloqueo = LockService.getScriptLock();
+  bloqueo.waitLock(10000);
+
+  try {
+    const fila = buscarFilaProgresoServidor_(
+      hoja,
+      sesion.identidad.id,
+      idContenido
+    );
+    const ahora = new Date();
+
+    if (fila) {
+      const yaVista = valorActivoServidor_(hoja.getRange(fila, 5).getValue());
+      hoja.getRange(fila, 5).setValue(true);
+
+      if (!yaVista) {
+        hoja.getRange(fila, 6).setValue(ahora);
+      }
+    } else {
+      hoja.appendRow([
+        sesion.identidad.id,
+        idContenido,
+        false,
+        "",
+        true,
+        ahora
+      ]);
+    }
+  } finally {
+    bloqueo.releaseLock();
+  }
+
+  return {
+    ok: true,
+    contenidoId: idContenido,
+    vista: true
+  };
+}
+
+
 function resolverSesionServidor_(token) {
   const tokenLimpio = String(token || "").trim();
 
@@ -365,7 +434,9 @@ function obtenerHojaContenidoServidores_() {
     "ACTIVO",
     "PUBLICADO",
     "COLOR",
-    "PRENDA"
+    "PRENDA",
+    "CREADO_POR",
+    "ALCANCE"
   ];
 
   if (!hoja) {
@@ -384,15 +455,21 @@ function obtenerHojaProgresoServidores_() {
   const libro = SpreadsheetApp.getActiveSpreadsheet();
   let hoja = libro.getSheetByName(SERVIDORES_HOJA_PROGRESO);
 
+  const encabezados = [
+    "SERVIDOR_ID",
+    "CONTENIDO_ID",
+    "COMPLETADA",
+    "ACTUALIZADO",
+    "VISTA",
+    "VISTO_EN"
+  ];
+
   if (!hoja) {
     hoja = libro.insertSheet(SERVIDORES_HOJA_PROGRESO);
-    hoja.appendRow([
-      "SERVIDOR_ID",
-      "CONTENIDO_ID",
-      "COMPLETADA",
-      "ACTUALIZADO"
-    ]);
+    hoja.appendRow(encabezados);
     hoja.setFrozenRows(1);
+  } else {
+    hoja.getRange(1, 1, 1, encabezados.length).setValues([encabezados]);
   }
 
   return hoja;
@@ -477,12 +554,16 @@ function obtenerProgresoServidor_(servidorId) {
   }
 
   hoja
-    .getRange(2, 1, hoja.getLastRow() - 1, 3)
+    .getRange(2, 1, hoja.getLastRow() - 1, 6)
     .getValues()
     .forEach(function(fila) {
       if (normalizarIdServidor_(fila[0]) === servidorId) {
-        progreso[String(fila[1] || "").trim().toUpperCase()] =
-          valorActivoServidor_(fila[2]);
+        progreso[String(fila[1] || "").trim().toUpperCase()] = {
+          completada: valorActivoServidor_(fila[2]),
+          actualizado: formatearFechaHoraContenidoServidor_(fila[3]),
+          vista: valorActivoServidor_(fila[4]),
+          vistoEn: formatearFechaHoraContenidoServidor_(fila[5])
+        };
       }
     });
 
